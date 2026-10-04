@@ -1,0 +1,178 @@
+# lt_tree.py —— LittleTiles 导入文本的树/语法校验器（递归解析 tiles / structure / children）
+# 依据交接文档 §3.1~§3.6、§3.13 的实证规则：
+#   tiles 条目形状 / 坐标 6 分量且上界排他 / 根 count = 根盒子数 / min,size = 【全树】并集包围盒
+#   structure id 必须在注册表内 / advancedDoor 写了 offX|offY|offZ 就必须要同一容器里有 offGrid（§3.6 陷阱）
+#   子节点不得带根专属键（min/size/count）
+# 用法: python lt_tree.py <文件.txt> [文件2.txt ...]
+import re, sys, io, os
+
+REG = {"fixed", "ladder", "bed", "chair", "storage", "noclip", "door", "slidingDoor",
+       "advancedDoor", "doorActivator"}
+ROOT_KEYS = ("tiles", "structure", "children", "min", "size", "count")
+NODE_KEYS = ("tiles", "structure", "children")
+
+
+def match(s, i):
+    op = s[i]
+    cl = {"{": "}", "[": "]"}[op]
+    depth, instr, j = 0, False, i
+    while j < len(s):
+        c = s[j]
+        if instr:
+            if c == '"':
+                instr = False
+        elif c == '"':
+            instr = True
+        elif c == op:
+            depth += 1
+        elif c == cl:
+            depth -= 1
+            if depth == 0:
+                return s[i:j + 1], j + 1
+        j += 1
+    raise ValueError("括号不配对 @%d" % i)
+
+
+def split_top(t):
+    out, depth, instr, cur = [], 0, False, []
+    for c in t:
+        if instr:
+            cur.append(c)
+            if c == '"':
+                instr = False
+            continue
+        if c == '"':
+            instr = True
+        elif c in "{[(":
+            depth += 1
+        elif c in "}])":
+            depth -= 1
+        if c == "," and depth == 0:
+            out.append("".join(cur)); cur = []
+        else:
+            cur.append(c)
+    if "".join(cur).strip():
+        out.append("".join(cur))
+    return out
+
+
+def parse_obj(s, i):
+    body, ni = match(s, i)
+    d = {}
+    for p in split_top(body[1:-1]):
+        k, _, v = p.partition(":")
+        d[k.strip()] = v.strip()
+    return d, ni
+
+
+def unq(v):
+    return v[1:-1] if v and v[0] == '"' else v
+
+
+def ivec(v):
+    return [int(x) for x in re.findall(r"-?\d+", v[3:-1])]
+
+
+def entries(tiles_text):
+    out = []
+    for e in split_top(match(tiles_text, 0)[0][1:-1]):
+        d, _ = parse_obj(e, 0)
+        if "bBox" in d:
+            rects = [ivec(d["bBox"])]
+        elif "boxes" in d:
+            rects = [[int(x) for x in m.split(",")]
+                     for m in re.findall(r"\[I;([-\d,]+)\]", match(d["boxes"], 0)[0])]
+        else:
+            rects = []
+        blk = re.search(r'block:"([^"]+)"', d.get("tile", ""))
+        out.append((unq(blk.group(1)) if blk else "?", rects, sorted(d.keys())))
+    return out
+
+
+def walk(s, i, depth, path, rep, st):
+    d, _ = parse_obj(s, i)
+    allowed = ROOT_KEYS if depth == 0 else NODE_KEYS
+    extra = [k for k in d if k not in allowed]
+    if extra:
+        st["issues"].append("%s 出现不该有的键 %s" % (path, extra))
+    if depth == 0:
+        st["min"], st["size"], st["count"] = d.get("min"), d.get("size"), d.get("count")
+
+    sid = sname = "-"
+    if "structure" in d:
+        sd, _ = parse_obj(d["structure"], 0)
+        sid, sname = unq(sd.get("id")), unq(sd.get("name"))
+        if sid not in REG:
+            st["issues"].append("%s structure id 不在注册表: %s" % (path, sid))
+        if sid == "doorActivator" and "activate" not in sd:
+            st["issues"].append("%s doorActivator 缺 activate(§3.13)" % path)
+        if sid == "advancedDoor":
+            # §3.6 陷阱：offX/Y/Z 与 offGrid 必须在【同一容器】里（新格式在 animation 块内）
+            box, tag = sd, "顶层"
+            if "animation" in sd:
+                box, tag = parse_obj(sd["animation"], 0)[0], "animation"
+            off = [k for k in ("offX", "offY", "offZ") if k in box]
+            rot = [k for k in ("rotX", "rotY", "rotZ") if k in box]
+            grid = "offGrid" in box
+            if off and not grid:
+                st["issues"].append("%s advancedDoor 有 %s 但同容器缺 offGrid → 静默忽略(§3.6)" % (path, off))
+            rep.append("%sadvancedDoor 帧: 容器=%s off=%s rot=%s offGrid=%s 总时长字段=%s"
+                       % ("  " * depth, tag, off, rot, grid, "duration" in sd))
+        if sid == "fixed" and "name" not in sd:
+            st["issues"].append("%s fixed 无 name（命名可以省略，仅提示）" % path)
+
+    els = entries(d["tiles"]) if "tiles" in d else []
+    if "tiles" not in d:
+        st["issues"].append("%s 缺 tiles(§3.2)" % path)
+    nbox = sum(len(rs) for _, rs, _ in els)
+    if depth == 0:
+        st["rootboxes"] = nbox
+    for blk, rs, keys in els:
+        for r in rs:
+            st["acc"].append(r)
+            if len(r) != 6:
+                st["issues"].append("%s 盒非 6 分量: %s" % (path, r))
+            elif not (r[0] < r[3] and r[1] < r[4] and r[2] < r[5]):
+                st["issues"].append("%s 盒上界非排他: %s" % (path, r))
+            if not blk or blk == "?":
+                st["issues"].append("%s 有条目缺 tile.block" % path)
+
+    kids = split_top(match(d["children"], 0)[0][1:-1]) if "children" in d else []
+    rep.append("%s[%s] id=%s name=%s 条目=%d 盒=%d 子=%d"
+               % ("  " * depth, path, sid, sname, len(els), nbox, len(kids)))
+    for k, c in enumerate(kids):
+        walk(c, 0, depth + 1, "%s.%d" % (path, k), rep, st)
+
+
+def report(fn):
+    s = io.open(fn, encoding="utf-8").read()
+    rep, st = [], {"acc": [], "issues": []}
+    try:
+        walk(s, 0, 0, "根", rep, st)
+    except Exception as ex:
+        print("!! %s 解析失败: %s" % (os.path.basename(fn), ex))
+        return
+    acc = st["acc"]
+    lo = [min(r[k] for r in acc) for k in range(3)]
+    hi = [max(r[k + 3] for r in acc) for k in range(3)]
+    if st["count"] is not None and int(st["count"]) != st["rootboxes"]:
+        st["issues"].append("根 count=%s 但根盒子数=%d(§3.1: count=盒子个数)" % (st["count"], st["rootboxes"]))
+    if st["min"] is not None and ivec(st["min"]) != lo:
+        st["issues"].append("根 min=%s 与全树并集 %s 不符" % (ivec(st["min"]), lo))
+    if st["size"] is not None and ivec(st["size"]) != [hi[k] - lo[k] for k in range(3)]:
+        st["issues"].append("根 size=%s 与全树并集 %s 不符" % (ivec(st["size"]), [hi[k] - lo[k] for k in range(3)]))
+    print("== %s  (%d 字节, 全树 %d 盒, 并集 min=%s size=%s, count=%s)"
+          % (os.path.basename(fn), len(s.encode("utf-8")), len(acc), lo,
+             [hi[k] - lo[k] for k in range(3)], st["count"]))
+    if st["issues"]:
+        for x in st["issues"]:
+            print("   [问题] " + x)
+    else:
+        print("   [问题] 无")
+    for line in rep:
+        print("   " + line)
+
+
+if __name__ == "__main__":
+    for f in sys.argv[1:]:
+        report(f)

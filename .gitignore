@@ -1,0 +1,17 @@
+# 大蓝图：脚本可重新生成，不入库
+nexus_lab.txt
+neon_tower.txt
+neon_city.txt
+ramen_shop.txt
+cyber_lab.txt
+nexus_lab_cyber_bak.txt
+
+# 反编译源码 / jar：只读参考，不入库
+lt_src/
+cc_src/
+*.jar
+
+# 其它
+__pycache__/
+probe.txt
+*_dump.txt
