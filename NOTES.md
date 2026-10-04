@@ -4,6 +4,7 @@
 - MC 1.12.2 Forge，LittleTiles pre199_19，FlatColoredBlocks，Little Importer，WorldEdit
 - 存档：超平坦；工作目录 E:\work\建筑\
 - 执行 agent：DeepSeek harness 上的 DeepSeek V4.1 Flash；每次会话先写 probe.txt 并用 dir 确认
+- 脚本必须在 E:\work\建筑\ 下运行（lt_colors.py 用相对路径读 CSV）
 
 ## 已验证结论（改动前必须遵守）
 1. 蓝图文本：坐标 [I;x1,y1,z1,x2,y2,z2]，单位 1/16 格；单盒用 bBox，多盒用 boxes；数据值写 "minecraft:wool:14"

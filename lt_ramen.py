@@ -133,7 +133,9 @@ box(BRASS,8,1,111,136,2,113)
 # ===== 吊顶 =====
 box(SP,8,83,8,136,84,112)
 for x in range(14,136,12): box(DO,x,82,8,x+2,83,112)
-box(0,28,82,20,116,87,100); box(WARM,28,86,20,116,87,100)
+box(0,28,82,20,116,87,100); box(DO,28,86,20,116,87,100)
+for x in range(30,116,8): box(WARM,x,86,20,x+2,87,100)
+for z in range(20,100,10): box(SP,28,85,z,116,86,z+1)
 box(WH,8,83,112,136,84,200)
 for x1,z1 in ((24,128),(88,128),(24,172),(88,172)): box(WHG,x1,82,z1,x1+32,83,z1+12)
 box(IR,29,84,159,43,134,173); box(0,30,83,160,42,140,172)
@@ -145,9 +147,9 @@ box(0,48,2,0,96,50,8); box(AN,44,0,-6,100,2,8)
 box(SP,45,2,-1,48,53,8); box(SP,96,2,-1,99,53,8); box(SP,45,50,-1,99,53,8)
 box(IR,46,49,-3,98,50,-2); box(IR,46,49,-2,47,52,-1); box(IR,97,49,-2,98,52,-1)
 for x0 in (48,64,80): box(NV,x0,34,-2,x0+15,49,-1); box(WW,x0,34,-2,x0+15,36,-1)
-for x in range(64,79):
-    for y in range(37,48):
-        if 9<=(x-71)**2+(y-42)**2<=20: px(WW,x,y,-2)
+for x in (63,79): box(0,x-1,34,-2,x+1,49,-1)
+for x0,ch in ((48,"豚"),(64,"骨"),(80,"面")):
+    draw(glyphs(ch,11),WW,"N",x0,x0+14,47,-2)
 for x1 in (14,102):
     x2=x1+28
     box(0,x1,20,0,x2,56,8); box(DG,x1,20,2,x2,56,6); box(0,x1+2,22,2,x2-2,54,6)
@@ -167,10 +169,18 @@ lantern(20,-22,34,57); lantern(124,-22,34,57)
 box(BK,14,66,-4,130,98,0); ringN(MAG,14,130,66,98,-5)
 draw(glyphs("一番拉面",24),WHG,"N",14,130,94,-5)
 for x,y in ((16,68),(126,68),(16,94),(126,94)): box(IR,x,y,-5,x+2,y+2,-4)
+box(KW,14,100,-5,130,101,-4)
+for x in range(16,130,6): px(WARM if (x//6)%2 else REDG,x,99,-5)
 box(CYG,10,104,-1,134,105,0)
 box(BK,139,56,-26,143,126,-4); ringX(MAG,138,-26,-4,56,126); ringX(MAG,143,-26,-4,56,126)
 vb=vglyphs("深夜食堂",14,2); draw(vb,WHG,"W",-26,-4,122,138); draw(vb,WHG,"E",-26,-4,122,143)
 for y in (58,122): box(IR,140,y,-4,142,y+2,-2)
+box(DG,-1,4,30,0,112,31)
+box(LG,-3,40,20,-1,58,30); box(YEL,-4,50,23,-3,54,27)
+box(WW,-1,30,40,0,58,58)
+draw(vglyphs("豚骨",10,2),RW,"W",40,58,56,-2)
+box(KW,-2,12,90,-1,14,110); box(IR,-2,60,80,0,74,96)
+for y in range(62,74,3): box(DG,-3,y,81,-2,y+1,95)
 # ===== 东墙设备 =====
 box(IR,144,34,122,152,36,124); box(IR,144,34,142,152,36,144); box(LG,144,36,120,154,54,146)
 for y in range(37,54):
@@ -202,7 +212,8 @@ box(YEL,64,2,209,66,30,211); box(YEL,70,38,208,82,40,210)
 box(DG,138,0,208,141,126,211); box(DG,138,0,211,141,2,216)
 for y in range(12,120,24): box(IR,137,y,207,142,y+1,212)
 # ===== 屋顶 =====
-box(LG,90,116,40,118,132,64)
+box(DG,90,116,40,118,132,64)
+for y in (118,123,128): box(IR,89,y,39,119,y+1,65)
 for x in range(92,116):
     for z in range(42,62):
         d=(x-103.5)**2+(z-51.5)**2
@@ -273,4 +284,16 @@ def export(fn):
     print(fn,f"{len(s.encode())/1024:.0f} KB | 小块 {cnt} | 材质 {len(parts)} | 尺寸 {[(hi[i]-lo[i])/16 for i in range(3)]} 格")
     print("无损校验:",np.array_equal(W,V))
     print(f"蓝图起点格 = 店西北角格 - ({off[0]},{off[1]},{off[2]})")
+# ===== ⑥ 发光材质诊断：只读打印，不改蓝图 =====
+print("=== ⑥ 发光材质诊断：x∈8~40 或 104~136, z∈8~112, y∈2~84 ===")
+_dxs=[x for x in range(8,41)]+[x for x in range(104,137)]
+for _nm in ("WARM","WHG","CYG","MAG","REDG","GRN"):
+    _mi=globals()[_nm]; _pts=[]
+    for _x in _dxs:
+        for _y,_z in np.argwhere(V[_x+OX,2+OY:85+OY,8+OZ:113+OZ]==_mi):
+            _pts.append((_x,int(_y)+2,int(_z)+8))
+    if not _pts:
+        print("  %s (%s): 0 体素"%(MATS[_mi],_nm)); continue
+    _b=[min(p[i] for p in _pts) for i in range(3)]+[max(p[i] for p in _pts) for i in range(3)]
+    print("  %s (%s): %d 体素  包围盒 x[%d,%d] y[%d,%d] z[%d,%d]"%(MATS[_mi],_nm,len(_pts),_b[0],_b[3],_b[1],_b[4],_b[2],_b[5]))
 walk(); export("ramen_shop.txt")
