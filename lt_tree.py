@@ -14,6 +14,8 @@ NODE_KEYS = ("tiles", "structure", "children")
 
 def match(s, i):
     op = s[i]
+    if op not in "{[":
+        raise ValueError("期望 { 或 [，实际是 %r（偏移 %d，附近文本: %r）" % (op, i, s[max(0, i - 40):i + 40]))
     cl = {"{": "}", "[": "]"}[op]
     depth, instr, j = 0, False, i
     while j < len(s):

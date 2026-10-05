@@ -24,6 +24,10 @@
 12. 门动画不能循环；AnimationEvent 只有 child（childId）和 sound-event（sound/volume/pitch/opening）；
     child 事件只能向下触发直系子门，doorActivator 可被触发；没有 light 结构。
     长动画方案：一次触发、按 tick 级联子门。
+13. pre199 有 /lt-open <x> <y> <z> [结构名...]（OP 权限 2，坐标为绝对坐标，结构名可选、用于过滤）；
+    player=null，不受 disableRightClick 限制；循环 = 命令方块 + 时钟反复触发。
+    duration 无上限（GUI 的 500 只是滑块范围）；rot 可超过 360，会被拆成多个半圈插值；子结构随父结构一起动。
+    pre199 不读红石。本地有 1.5.87 + CreativeCore 1.10.71（已禁用），1.5.87 才有 light/信号/粒子。
 
 ## 用户审美偏好
 - 要极致细节，全程用小方块，不要火柴盒式的造型

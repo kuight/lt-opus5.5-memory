@@ -43,7 +43,9 @@ class Vol:
             parts.append(('{bBox:%s,tile:{block:"%s"}}' if len(bx)==1 else '{boxes:[%s],tile:{block:"%s"}}')%(b,s.MATS[mi]))
         t="{tiles:[%s],min:[I;%d,%d,%d],size:[I;%d,%d,%d],count:%d}"%(",".join(parts),
             *[lo[i]-base[i] for i in range(3)],*[hi[i]-lo[i] for i in range(3)],cnt)
-        if structure:                                   # 根层直接挂结构（如 noclip 暖帘）
+        if structure:                                   # 根层直接挂结构（如 noclip 暖帘 / advancedDoor 扇叶）
+            if not structure.startswith("{"):            # 允许传 id:"x",name:"y" 这种不带花括号的写法
+                structure = "{" + structure + "}"
             k=lt_root.tiles_end(t); t=t[:k]+",structure:"+structure+t[k:]
         t=lt_root.fix(t,name,tag=fn)
         open(fn,"w",encoding="utf-8").write(t)
