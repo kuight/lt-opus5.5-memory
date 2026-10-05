@@ -6,6 +6,7 @@ import lt_colors, lt_root
 ROOT_NAME="ramen_shop"   # 根层 structure 的 name（本脚本当前不输出 children，守卫为将来预留）
 MIRROR=False   # 招牌若左右反，改成 True
 DIAG=False     # True 时才打印 ⑥ 发光材质诊断（只读，不改蓝图）
+LEAKFIX=True   # True 时把"离室内 ≤2 格的墙外发光体素"换成同色不发光假灯
 FONTS=[r"C:\Windows\Fonts\simhei.ttf",r"C:\Windows\Fonts\msyh.ttc",r"C:\Windows\Fonts\simsun.ttc"]
 def F(h,k="solid"): return lt_colors.fc(h,k)
 
@@ -298,4 +299,32 @@ if DIAG:
             print("  %s (%s): 0 体素"%(MATS[_mi],_nm)); continue
         _b=[min(p[i] for p in _pts) for i in range(3)]+[max(p[i] for p in _pts) for i in range(3)]
         print("  %s (%s): %d 体素  包围盒 x[%d,%d] y[%d,%d] z[%d,%d]"%(MATS[_mi],_nm,len(_pts),_b[0],_b[3],_b[1],_b[4],_b[2],_b[5]))
+# ===== 漏光检查：店铺范围外、离任一室内格 ≤2 格的发光体素 → 换成同色假灯（不发光）=====
+GLOW=("WARM","WHG","CYG","MAG","REDG","GRN")
+# 假灯对照表：同一个 hex 用 F(hex,"solid") 生成，再用 M() 登记成索引（WARM→F("#ffd9a0","solid") 等）
+FAKE={WARM:M(F("#ffd9a0","solid")),WHG:M(F("#fff2d8","solid")),CYG:M(F("#40f0ff","solid")),
+      MAG:M(F("#ff30c0","solid")),REDG:M(F("#ff3030","solid")),GRN:M(F("#40ff80","solid"))}
+assert set(FAKE)==set(globals()[n] for n in GLOW),"假灯对照表与发光材质不一致"
+RX=(0,144,16,96,0,208)                                   # 店铺范围 x0,x1,y0,y1,z0,z1（像素，半开）
+_cells=[(cx,cy,cz) for cx in range(RX[0]//16,RX[1]//16) for cy in range(RX[2]//16,RX[3]//16)
+        for cz in range(RX[4]//16,RX[5]//16)
+        if (V[cx*16+OX:(cx+1)*16+OX,cy*16+OY:(cy+1)*16+OY,cz*16+OZ:(cz+1)*16+OZ]==0).any()]
+_dil={(i+dx,j+dy,k+dz) for i,j,k in _cells
+      for dx in (-2,-1,0,1,2) for dy in (-2,-1,0,1,2) for dz in (-2,-1,0,1,2)}
+print("=== 漏光检查（16px 一格）===")
+print("店铺范围 x[%d,%d) y[%d,%d) z[%d,%d)；含空气的室内格 %d 个"%(RX[0],RX[1],RX[2],RX[3],RX[4],RX[5],len(_cells)))
+_fixed=0
+for _nm in GLOW:
+    _mi=globals()[_nm]; _idx=[]
+    for _a,_b,_c in np.argwhere(V==_mi):
+        _x,_y,_z=int(_a)-OX,int(_b)-OY,int(_c)-OZ
+        if RX[0]<=_x<RX[1] and RX[2]<=_y<RX[3] and RX[4]<=_z<RX[5]: continue   # 店铺范围内不算
+        if (_x//16,_y//16,_z//16) in _dil: _idx.append((int(_a),int(_b),int(_c)))
+    _gc=sorted({((a-OX)//16,(b-OY)//16,(c-OZ)//16) for a,b,c in _idx})
+    print("  %-5s 风险体素 %4d  所在格 %s"%(_nm,len(_idx),_gc if _gc else "无"))
+    if _idx and LEAKFIX:
+        _A=np.array(_idx); V[_A[:,0],_A[:,1],_A[:,2]]=FAKE[_mi]
+        print("        → %d 个换成 %s（同色不发光）"%(len(_idx),MATS[FAKE[_mi]]))
+        _fixed+=len(_idx)
+if LEAKFIX: print("LEAKFIX: 共替换 %d 个体素为同色不发光假灯"%_fixed)
 walk(); export("ramen_shop.txt")
