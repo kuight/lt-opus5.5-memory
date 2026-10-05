@@ -5,6 +5,7 @@
 - 存档：超平坦；工作目录 E:\work\建筑\
 - 执行 agent：DeepSeek harness 上的 DeepSeek V4.1 Flash；每次会话先写 probe.txt 并用 dir 确认
 - 脚本必须在 E:\work\建筑\ 下运行（lt_colors.py 用相对路径读 CSV）
+- **目标基线已切到 1.5.87**（mods 里 `[LT小方块]LittleTiles_v1.5.87` + `CreativeCore_v1.10.71`，当前仍 .disabled；游戏实际跑 pre199）。反编译源码：E:\work\建筑\lt_src_187（438 个 java，只读，已 gitignore）
 
 ## 已验证结论（改动前必须遵守）
 1. 蓝图文本：坐标 [I;x1,y1,z1,x2,y2,z2]，单位 1/16 格；单盒用 bBox，多盒用 boxes；数据值写 "minecraft:wool:14"
@@ -47,3 +48,31 @@
 
 ## 测试记录
 - 2026-10-05 mech A（v3+fixed）：按钮能开，右键门打不开 ✔
+
+## 1.5.87 基线核对（源码只读核对，未改代码；行号取自 lt_src_187）
+| NOTES 条目 | 1.5.87 | 证据 |
+|---|---|---|
+| 1 蓝图文本（[I;…] / bBox / boxes / "block:meta"，单位 1/16 格） | ✔ | `LittleTile.java:316/354/374-380`、`LittlePreview.java:266/275-279`、`LittlePreviews.java:395` |
+| 1 grid 默认 16 | ✔ | `LittleTilesConfig.java:111`、`LittleTiles.java:228`、`LittleGridContext.java:21` |
+| 3 根有 children 就必须有 structure | ✔（机制同，调用点搬到 Placement） | `Placement.java:230-235`（仅 origin.isStructure() 才 notifyStructurePlaced）、`:236` + `:264-273` updateRelations（父子双方 getStructure() 非空才建连接） |
+| 4 noclip web:0b 不减速 | ✔ | `LittleNoClipStructure.java:33`（默认 true）/`:41/46` |
+| 5 高级门 6 通道（rot/off）+ 位移换算 offGrid | ✔ | `LittleAdvancedDoor.java:248-264`、`:168-169/197-198/219-220` |
+| 5 写 offX/Y/Z 就必须写 offGrid | ✔ | `LittleAdvancedDoor.java:248-252`：有 `if(offX!=null)` 守卫，但守卫内直接解引用 `offGrid` → 缺 offGrid 会在此处出错（pre199 记的是"静默忽略"，实际现象待实测） |
+| 5 关键帧格式与插值表（linear/cosine/cubic/hermite） | ✔ | `ValueTimeline.java:17/167-168/225-228/347-350` |
+| 6 doorActivator activate:[I;n] → children 下标 | ✔ | `LittleDoorActivator.java:55/62` |
+| 6 门禁只挡右键、按钮仍能开 | ✔ | `LittleDoor.java:68`（仅 RIGHTCLICK 路径检查）、`LittleDoorActivator.java:221` |
+| 12 门动画不能循环 | ✔ | `AnimationGuiHandler.java:31/68-71/118`（loop 仅 GUI 预览） |
+| 12 AnimationEvent 只有 child / sound-event | ✔ | `AnimationEvent.java:170/208` |
+| 12「没有 light 结构」 | **✘** | `LittleStructureRegistry.java:153`（1.5.87 有 light，带 enabled 输出） |
+
+**蓝图格式改动点（只列，不改代码）**
+- 新增结构 id：light / message / item_holder / particle_emitter / blankomatic / single_cable1|4|16 / single_input1|4|16 / single_output1|4|16 / signal_display_16 / structure_builder（`LittleStructureRegistry.java:153-155`、`LittleDoorBase.java:313-316`、`LittleStructurePremade.java:170-185`）
+- 结构类型新增**命名输入/输出端口**（`LittleStructureType.java:82/87`）：各门新增 output `state`；noclip 新增 input `players`/`entities`
+- 结构 NBT 新增：内部输出＝以**端口名为键的 COMPOUND**（`state`/`con`/`mode`/`delay`，`LittleStructure.java:650` 写、`:578` 读）；内部输入＝以端口名为键的 **int**（`InternalSignalInput.java:36`）；外部输出处理器＝**`signal` TAG_LIST**（`LittleStructure.java:636-641`、`:556-568`）
+- 旧格式兼容仍在：`LittlePreview.java:73-74`（bBoxminX）、`LittlePreviews.java:411-413`（紧凑 tiles 整数分支）
+
+**信号/自激（源码级结论）**
+- 目标表达式：`a<n>`=本结构内部输入、`b<n>`=本结构内部输出、`i<n>`/`o<n>`=外部输入/输出（指向子结构 single_input/single_output）、`c<n>.…`=下钻子结构、`p.…`=父结构、`d<n>`=索引变量（`SignalTarget.java:19-81`；`SignalUtils.java:16-72`；`SignalTargetParent.java:382-392`；`SignalTargetNested.java:435`）
+- **能自激**：输出条件 `con` 可引用自身输出 `b<n>`；`SignalInputCondition.calculateDelay()`（`:135/243/275`）保证反馈 ≥1 tick，`InternalSignalOutput.load():64-66` 用 `max(ceil(calculateDelay()), delay)` 抬高延迟 → 可做无外部触发的振荡（稳定性待游戏内实测）
+- 周期性：`SignalMode.PULSE`（delay+length）+ `SignalTicker` 调度（`SignalMode.java:152/678-736`、`SignalTicker.java:25`）
+- **1.5.87 新增红石转换方块**：`BlockSignalConverter.java:11/95`、`TESignalConverter.java:33`（pre199 完全没有红石代码）
