@@ -5,7 +5,7 @@
 - 存档：超平坦；工作目录 E:\work\建筑\
 - 执行 agent：DeepSeek harness 上的 DeepSeek V4.1 Flash；每次会话先写 probe.txt 并用 dir 确认
 - 脚本必须在 E:\work\建筑\ 下运行（lt_colors.py 用相对路径读 CSV）
-- **目标基线已切到 1.5.87**（mods 里 `[LT小方块]LittleTiles_v1.5.87` + `CreativeCore_v1.10.71`，当前仍 .disabled；游戏实际跑 pre199）。反编译源码：E:\work\建筑\lt_src_187（438 个 java，只读，已 gitignore）
+- 游戏已实跑 LittleTiles 1.5.87 + CreativeCore 1.10.71（2026-10-05 用户启用，旧存档已备份，旧建筑和旧机关正常）
 
 ## 已验证结论（改动前必须遵守）
 1. 蓝图文本：坐标 [I;x1,y1,z1,x2,y2,z2]，单位 1/16 格；单盒用 bBox，多盒用 boxes；数据值写 "minecraft:wool:14"
@@ -48,6 +48,11 @@
 
 ## 测试记录
 - 2026-10-05 mech A（v3+fixed）：按钮能开，右键门打不开 ✔
+- 2026-10-05（1.5.87 实测）：旧蓝图能导入，/lt-open 可用，mech 机关都能动
+- 卷帘门：按钮能开，但关不上（门是 disableRightClick:1b）
+- loop_fan：开 0→360 顺时针，关时倒放成逆时针；回到原位时闪一下并有放置方块的声音
+- 导入后发光变弱或不亮（待查）；新版光照渲染变了，用户觉得更有科幻感
+- light、message 结构能用；particle 还没测
 
 ## 1.5.87 基线核对（源码只读核对，未改代码；行号取自 lt_src_187）
 | NOTES 条目 | 1.5.87 | 证据 |
