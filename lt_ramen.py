@@ -5,6 +5,7 @@ from PIL import Image, ImageDraw, ImageFont
 import lt_colors, lt_root
 ROOT_NAME="ramen_shop"   # 根层 structure 的 name（本脚本当前不输出 children，守卫为将来预留）
 MIRROR=False   # 招牌若左右反，改成 True
+DIAG=False     # True 时才打印 ⑥ 发光材质诊断（只读，不改蓝图）
 FONTS=[r"C:\Windows\Fonts\simhei.ttf",r"C:\Windows\Fonts\msyh.ttc",r"C:\Windows\Fonts\simsun.ttc"]
 def F(h,k="solid"): return lt_colors.fc(h,k)
 
@@ -155,8 +156,8 @@ for x1 in (14,102):
     box(0,x1,20,0,x2,56,8); box(DG,x1,20,2,x2,56,6); box(0,x1+2,22,2,x2-2,54,6)
     box(GLASS,x1+2,22,3,x2-2,54,5); box(DG,x1+2,44,3,x2-2,46,5)
     box(AN,x1-2,18,-2,x2+2,20,2); box(SP,x1-1,18,6,x2+1,20,10)
-draw(pix5("OPEN"),REDG,"N",104,128,53,6)
-b=pix5("24H"); draw(b,CYG,"N",16,40,53,6); w=len(b[0]); u0=(56-w)//2; ringN(CYG,u0-2,u0+w+2,47,54,6)
+draw(pix5("OPEN"),REDG,"N",104,128,53,5); box(BK,102,47,6,130,54,7)
+b=pix5("24H"); draw(b,CYG,"N",16,40,53,5); w=len(b[0]); u0=(56-w)//2; ringN(CYG,u0-2,u0+w+2,47,54,5); box(BK,u0-2,47,6,u0+w+2,54,7)
 for k in range(29):
     z=-1-k; yb=62-k//4
     for x0 in range(6,138,8): box(RW if (x0//8)%2==0 else WW,x0,yb,z,min(x0+8,138),yb+2,z+1)
@@ -284,16 +285,17 @@ def export(fn):
     print(fn,f"{len(s.encode())/1024:.0f} KB | 小块 {cnt} | 材质 {len(parts)} | 尺寸 {[(hi[i]-lo[i])/16 for i in range(3)]} 格")
     print("无损校验:",np.array_equal(W,V))
     print(f"蓝图起点格 = 店西北角格 - ({off[0]},{off[1]},{off[2]})")
-# ===== ⑥ 发光材质诊断：只读打印，不改蓝图 =====
-print("=== ⑥ 发光材质诊断：x∈8~40 或 104~136, z∈8~112, y∈2~84 ===")
-_dxs=[x for x in range(8,41)]+[x for x in range(104,137)]
-for _nm in ("WARM","WHG","CYG","MAG","REDG","GRN"):
-    _mi=globals()[_nm]; _pts=[]
-    for _x in _dxs:
-        for _y,_z in np.argwhere(V[_x+OX,2+OY:85+OY,8+OZ:113+OZ]==_mi):
-            _pts.append((_x,int(_y)+2,int(_z)+8))
-    if not _pts:
-        print("  %s (%s): 0 体素"%(MATS[_mi],_nm)); continue
-    _b=[min(p[i] for p in _pts) for i in range(3)]+[max(p[i] for p in _pts) for i in range(3)]
-    print("  %s (%s): %d 体素  包围盒 x[%d,%d] y[%d,%d] z[%d,%d]"%(MATS[_mi],_nm,len(_pts),_b[0],_b[3],_b[1],_b[4],_b[2],_b[5]))
+# ===== ⑥ 发光材质诊断：只读打印，不改蓝图（DIAG=True 时才跑）=====
+if DIAG:
+    print("=== ⑥ 发光材质诊断：x∈8~40 或 104~136, z∈8~112, y∈2~84 ===")
+    _dxs=[x for x in range(8,41)]+[x for x in range(104,137)]
+    for _nm in ("WARM","WHG","CYG","MAG","REDG","GRN"):
+        _mi=globals()[_nm]; _pts=[]
+        for _x in _dxs:
+            for _y,_z in np.argwhere(V[_x+OX,2+OY:85+OY,8+OZ:113+OZ]==_mi):
+                _pts.append((_x,int(_y)+2,int(_z)+8))
+        if not _pts:
+            print("  %s (%s): 0 体素"%(MATS[_mi],_nm)); continue
+        _b=[min(p[i] for p in _pts) for i in range(3)]+[max(p[i] for p in _pts) for i in range(3)]
+        print("  %s (%s): %d 体素  包围盒 x[%d,%d] y[%d,%d] z[%d,%d]"%(MATS[_mi],_nm,len(_pts),_b[0],_b[3],_b[1],_b[4],_b[2],_b[5]))
 walk(); export("ramen_shop.txt")

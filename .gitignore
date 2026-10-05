@@ -15,3 +15,4 @@ cc_src/
 __pycache__/
 probe.txt
 *_dump.txt
+*_old*.txt
