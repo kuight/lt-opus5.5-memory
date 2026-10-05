@@ -319,6 +319,7 @@ for _nm in GLOW:
     for _a,_b,_c in np.argwhere(V==_mi):
         _x,_y,_z=int(_a)-OX,int(_b)-OY,int(_c)-OZ
         if RX[0]<=_x<RX[1] and RX[2]<=_y<RX[3] and RX[4]<=_z<RX[5]: continue   # 店铺范围内不算
+        if _z<0: continue   # 门面霓虹豁免：室内前部有灯槽照明，漏光看不出
         if (_x//16,_y//16,_z//16) in _dil: _idx.append((int(_a),int(_b),int(_c)))
     _gc=sorted({((a-OX)//16,(b-OY)//16,(c-OZ)//16) for a,b,c in _idx})
     print("  %-5s 风险体素 %4d  所在格 %s"%(_nm,len(_idx),_gc if _gc else "无"))
