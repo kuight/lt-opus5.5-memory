@@ -3,8 +3,6 @@ from lt_np import Vol, F
 WX,WY,WZ=-800,3,313
 SEGS,L,D=4,256,176
 C1,C2=136,184                       # 斑马线（全局像素 x），正对拉面店东侧小巷
-PUDDLE=[(40,100,14,7),(300,70,20,8),(520,112,12,6),(700,60,18,9),(930,96,15,7)]
-PATCH=[(200,48,40,24),(610,96,32,30)]
 DRAIN=[g for g in range(32,SEGS*L,128) if not (C1-24<g<C2+8)]
 
 def seg(i):
@@ -41,22 +39,14 @@ def seg(i):
     B(0,C1,15,17,C2,16,32); B(0,C1,14,24,C2,15,32)
     B(0,C1,15,144,C2,16,160); B(0,C1,14,144,C2,15,153)
     dots(C1,C2,9,16,16); dots(C1,C2,161,168,16); dots(C1,C2,24,31,14); dots(C1,C2,145,152,14)
-    # 5 沥青补丁 → 标线 → 斑马线/停止线
-    for g,z,l,w in PATCH: B(BK,g,13,z,g+l,14,z+w)
+    # 5 标线 → 斑马线/停止线
     B(WH,x0,13,40,E,14,42); B(WH,x0,13,134,E,14,136)
     for g in range(0,SEGS*L,80):
         if g+48<=C1-8 or g>=C2+8: B(WH,g,13,87,g+48,14,89)
     B(ASP,C1,13,40,C2,14,42); B(ASP,C1,13,134,C2,14,136)
     for z in range(44,132,16): B(WH,C1+4,13,z,C2-4,14,z+8)
     B(WH,C1-12,13,42,C1-9,14,88); B(WH,C2+9,13,88,C2+12,14,134)
-    # 6 积水（两个椭圆叠成不规则形）
-    for cx,cz,rx,rz in PUDDLE:
-        for ex,ez,ax_,az_ in ((cx,cz,rx,rz),(cx+rx*.6,cz+rz*.4,rx*.6,rz*.7)):
-            for g in range(int(ex-ax_)-1,int(ex+ax_)+2):
-                if not x0<=g<E: continue
-                for z in range(int(ez-az_)-1,int(ez+az_)+2):
-                    if 36<=z<140 and ((g+.5-ex)/ax_)**2+((z+.5-ez)/az_)**2<=1: P(WET,g,13,z)
-    # 7 井盖（外圈缝 + 十字 + 内环，凹 1 像素）
+    # 6 井盖（外圈缝 + 十字 + 内环，凹 1 像素）
     cx,cz=x0+208,(64 if i%2==0 else 112)
     for g in range(cx-12,cx+12):
         for z in range(cz-12,cz+12):

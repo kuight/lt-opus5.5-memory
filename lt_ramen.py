@@ -2,7 +2,7 @@
 import numpy as np
 from collections import deque
 from PIL import Image, ImageDraw, ImageFont
-import lt_colors, lt_root
+import lt_colors, lt_root, lt_np
 ROOT_NAME="ramen_shop"   # 根层 structure 的 name（本脚本当前不输出 children，守卫为将来预留）
 MIRROR=False   # 招牌若左右反，改成 True
 DIAG=False     # True 时才打印 ⑥ 发光材质诊断（只读，不改蓝图）
@@ -148,10 +148,7 @@ for x1 in (0,134): box(DG,x1,4,-2,x1+10,128,0); box(CYG,x1+4,8,-3,x1+6,124,-2)
 box(0,48,2,0,96,50,8); box(AN,44,0,-6,100,2,8)
 box(SP,45,2,-1,48,53,8); box(SP,96,2,-1,99,53,8); box(SP,45,50,-1,99,53,8)
 box(IR,46,49,-3,98,50,-2); box(IR,46,49,-2,47,52,-1); box(IR,97,49,-2,98,52,-1)
-for x0 in (48,64,80): box(NV,x0,34,-2,x0+15,49,-1); box(WW,x0,34,-2,x0+15,36,-1)
-for x in (63,79): box(0,x-1,34,-2,x+1,49,-1)
-for x0,ch in ((80,"豚"),(64,"骨"),(48,"面")):
-    draw(glyphs(ch,13),WW,"N",x0,x0+14,49,-2)
+# 暖帘（豚骨面三幅）不再属于拉面店蓝图，改到文件末尾单独导出 ramen_curtain.txt（可穿透 noclip）
 for x1 in (14,102):
     x2=x1+28
     box(0,x1,20,0,x2,56,8); box(DG,x1,20,2,x2,56,6); box(0,x1+2,22,2,x2-2,54,6)
@@ -299,6 +296,31 @@ if DIAG:
             print("  %s (%s): 0 体素"%(MATS[_mi],_nm)); continue
         _b=[min(p[i] for p in _pts) for i in range(3)]+[max(p[i] for p in _pts) for i in range(3)]
         print("  %s (%s): %d 体素  包围盒 x[%d,%d] y[%d,%d] z[%d,%d]"%(MATS[_mi],_nm,len(_pts),_b[0],_b[3],_b[1],_b[4],_b[2],_b[5]))
+# ===== 暖帘（豚骨面三幅）：单独导出为可穿透结构（noclip, web:0b）=====
+# 结构写法沿用 lt_mech.py 里已验证的暖帘样品；坐标系与拉面店一致（O 相同），W 置 0 = 以店西北角格为原点
+SHOP_NW=(-800,4,324)                     # 店西北角格（按 PLAN 的南排位置；换位置只改这三个数）
+CV=lt_np.Vol((192,64,64),(16,0,48),(0,0,0))
+_CNV=CV.M("minecraft:wool:11"); _CWW=CV.M("minecraft:wool")
+def cpx(m,x,y,z): CV.box(m,x,y,z,x+1,y+1,z+1)
+def cdraw(bm,m,u1,u2,ytop,d):            # 与 draw() 的 N 面算法一致（含 MIRROR 翻转与居中）
+    w=len(bm[0]); u0=(u1+u2-w)//2; rev=(True)!=MIRROR
+    for j,row in enumerate(bm):
+        for i,on in enumerate(row):
+            if on: cpx(m,u0+w-1-i if rev else u0+i, ytop-1-j, d)
+for x0 in (48,64,80):
+    CV.box(_CNV,x0,34,-2,x0+15,49,-1); CV.box(_CWW,x0,34,-2,x0+15,36,-1)
+for x in (63,79): CV.box(0,x-1,34,-2,x+1,49,-1)
+for x0,ch in ((80,"豚"),(64,"骨"),(48,"面")):
+    cdraw(glyphs(ch,13),_CWW,x0,x0+14,49,-2)
+_cs=CV.export("ramen_curtain.txt","ramen_curtain",'{id:"noclip",name:"暖帘",web:0b}')
+_ax=[np.nonzero(V.any(axis=tuple(j for j in range(3) if j!=i)))[0] for i in range(3)]
+_sb=[int(a[0])//16*16 for a in _ax]
+_shs=tuple((_sb[i]-[OX,OY,OZ][i])//16 for i in range(3))          # 拉面店蓝图起点（以店西北角为原点）
+print("暖帘导入起点（以店西北角为原点）= %s   ← 相对拉面店蓝图起点 %s 的偏移 = %s 格"
+      %(_cs,_shs,tuple(_cs[i]-_shs[i] for i in range(3))))
+print("按 PLAN 店西北角格 %s：拉面店导入起点 %s ；暖帘导入起点 %s"
+      %(SHOP_NW,tuple(SHOP_NW[i]+_shs[i] for i in range(3)),tuple(SHOP_NW[i]+_cs[i] for i in range(3))))
+
 # ===== 漏光检查：店铺范围外、离任一室内格 ≤2 格的发光体素 → 换成同色假灯（不发光）=====
 GLOW=("WARM","WHG","CYG","MAG","REDG","GRN")
 # 假灯对照表：同一个 hex 用 F(hex,"solid") 生成，再用 M() 登记成索引（WARM→F("#ffd9a0","solid") 等）

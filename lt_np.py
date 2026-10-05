@@ -18,7 +18,7 @@ class Vol:
         assert min(x1+a,y1+b,z1+c)>=0,"坐标越界（负下标会回绕）"
         s.V[x1+a:x2+a,y1+b:y2+b,z1+c:z2+c]=m
     def px(s,m,x,y,z): s.box(m,x,y,z,x+1,y+1,z+1)
-    def export(s,fn,name):
+    def export(s,fn,name,structure=None):
         V=s.V; SX,SY,SZ=V.shape
         ax=[np.nonzero(V.any(axis=tuple(j for j in range(3) if j!=i)))[0] for i in range(3)]
         lo=[int(a[0]) for a in ax]; hi=[int(a[-1])+1 for a in ax]; base=[l//16*16 for l in lo]
@@ -43,6 +43,8 @@ class Vol:
             parts.append(('{bBox:%s,tile:{block:"%s"}}' if len(bx)==1 else '{boxes:[%s],tile:{block:"%s"}}')%(b,s.MATS[mi]))
         t="{tiles:[%s],min:[I;%d,%d,%d],size:[I;%d,%d,%d],count:%d}"%(",".join(parts),
             *[lo[i]-base[i] for i in range(3)],*[hi[i]-lo[i] for i in range(3)],cnt)
+        if structure:                                   # 根层直接挂结构（如 noclip 暖帘）
+            k=lt_root.tiles_end(t); t=t[:k]+",structure:"+structure+t[k:]
         t=lt_root.fix(t,name,tag=fn)
         open(fn,"w",encoding="utf-8").write(t)
         start=tuple(s.W[i]+(base[i]-s.O[i])//16 for i in range(3))
