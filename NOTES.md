@@ -31,6 +31,7 @@
     pre199 不读红石。本地已启用 1.5.87 + CreativeCore 1.10.71，1.5.87 才有 light/信号/粒子。
 14. 1.5.87 有信号转换器 BlockSignalConverter（红石⇄信号互转，源码确认，未实测）。
 15. **手写 schematic 的根 TAG_Compound 名字必须写 `Schematic`**（gzip 解压后前 12 字节 = `0A 00 09 53 63 68 65 6D 61 74 69 63`），名字写成空串会被 WE 6.1.10 拒绝：`Tag 'Schematic' does not exist or is not first`；且必须是 **gzip 流（魔数 1f 8b）**，不能是 zlib 裸流。校验工具：`lt_verify_schem.py`（独立读取器，不复用写出代码）。
+16. **生成器禁止用正则盲改 int 数组**（2026-10-06 血的教训）。`[I;…]` 在蓝图文本里有三种身份：①盒子坐标（6）②可变形盒（7/11）③**非坐标数组**（`axisCenter` 7 个、`animation` 时间轴 8+ 个）。任何"扫所有 `[I;…]` 就加偏移"的做法都会毁掉 ③ → 时间轴首元素被加成 224 ⇒ 游戏里放置时 `ValueTimeline.getType(224)` 抛 `RuntimeException: Invalid id 224`（**直接崩客户端**）。合规做法：**只对 tiles 段做平移**（该段只允许 6/7/11，`lt_probe187.shift_tiles` 带断言），结构文本一律不碰；取盒子也必须在 `bBox:`/`boxes:` 位置取（不能按分量数猜）。另注：`lt_np.Vol.export` 会把坐标归一化到内容最小角所在的格（`lt_np.py:24/41`），所以"生成在最终坐标"必须补这一层 tiles 级平移才能与结构里的 axisCenter 对齐。
 
 ## 用户审美偏好
 - 要极致细节，全程用小方块，不要火柴盒式的造型

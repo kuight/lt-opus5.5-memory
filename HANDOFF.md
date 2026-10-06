@@ -102,10 +102,13 @@
 - **触发样品 = E**（唯一走"整节点平移"分支的样品）；证据：文件里只有 E 的 `animation.rotY` 首元素是 224（`[224, 4, 0, …]`），其余 8 个样品的结构文本没被平移、时间轴首元素都是 0
 - **根因（我的工具 bug，不是 LT 的问题）**：排版用的 `trans()` **盲扫所有 `[I;…]`**，把 `animation` 里的时间轴也按坐标加了偏移 → `[I;0,2,0,0,0,20,…]` → `[I;224,4,0,224,2,20,…]` → `getType(224)` 抛错
 - `ValueTimeline.read` 格式（`ValueTimeline.java:39-54`）：`[type(0~3), count, (tick, hi32, lo32)×count] + additional`（Linear 附加 0 个、Hermite 3 个）；`getType` 在 `id < -1 || id >= types.size()` 时抛 `Invalid id`
-- **修法方案（三选一，等批准；本轮按要求只报方案、未改样品）**：
-  - **A（最稳）**：探针不再"整节点平移"，改为每个样品一开始就在自己的最终坐标里生成（`Vol` 的 offset 或生成前带上 x 偏移），彻底不需要 `trans()`
-  - **B（最小改动）**：`trans()` 只平移**盒子位置**的数组（`bBox:` / `boxes:` 内），`axisCenter` 按需单独处理，**时间轴一律不碰**
-  - **C（兜底守卫）**：给 `lt_tree.py` 加一条检查——非盒子 int 数组若形如时间轴（长度 = `2+3*count` 或 `+3`），要求 `a[0] ∈ {0,1,2,3}` 且长度自洽；本次这种错误在"生成后立刻"就会被拦住
+- **修法（2026-10-06 用户批准 A+C；**已实施**）**：
+  - **A（已实施）**：`lt_probe187.py` 重写 —— 样品在**局部坐标**生成，导出后**只对 tiles 段**做一次平移（新函数 `shift_tiles`，带断言：该段只允许出现 6/7/11 分量的盒子数组），**结构文本一律不碰**；旧的 `trans()` 已删除；`axisCenter` 按最终坐标显式计算，且保证落在自家盒子包围盒内。
+    ※ 顺带查清：`lt_np.Vol.export` 会把坐标**归一化到内容最小角所在的格**（`lt_np.py:24/41` `base=lo//16*16`），所以"直接生成在最终坐标"必须补这层 tiles 级平移才能与结构里的 `axisCenter` 对齐。
+  - **B（不做）**：按用户要求跳过。
+  - **C（已实施）**：`lt_tree.py` 新增两道守卫 —— ①**时间轴形态**：`rotX/Y/Z`、`offX/Y/Z` 数组必须 `a[0] ∈ {0,1,2,3}` 且长度 = `2 + 3*a[1]`（hermite id=3 再 +3 个附加）；②**axisCenter 落点**：必须落在**本节点自己的盒子包围盒**内（含边界）。**有问题时 `lt_tree.py` 现在返回 exit 1**。
+  - **反例夹具**（入库）：`samples/broken_probe_187_timeline224.txt`、`samples/broken_probe_E_timeline224.txt` —— 两份都必须报错 ✔（已验）
+  - **正例**：12 份文件（probe_187 / probe_187_safe / probe_A~I / probe_F10 / probe_j）全部 `lt_root=✓ lt_tree=✓` ✔（已验）
 - 同一根因的另外两处（均已定位）：`lt_probe187.py` 的包围盒统计、`lt_probe_split.py` 的 `boxes_of()`（**后者已修**：只在 `bBox:`/`boxes:` 位置取数组）
 
 ### ★ 附属评估

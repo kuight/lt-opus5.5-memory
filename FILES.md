@@ -28,7 +28,7 @@
 | lt_mech_v.py | 机关对照样品 v1~v3（门可右键无按钮 / 有按钮 / 门禁右键） | 无（自建体素） | mech_v1_门可右键_无按钮.txt、mech_v2_门可右键_有按钮.txt、mech_v3_原版_门禁右键_有按钮.txt | 2026-10-05（重跑，守卫自动插 structure） |
 | lt_mech_v45.py | 由 v2/v3 派生 v4（**豁免**负对照：根无 structure）/ v5（根带 structure） | mech_v2/v3 的 txt | mech_v4_按钮门触发子门_根无结构.txt、mech_v5_根带结构_门禁右键_有按钮.txt | 2026-10-05（重跑 + 反做还原校验） |
 | lt_np.py | **街区通用库**（1.5.87 基线）：`Vol` = numpy 体素 + 贪心合并 + 无损自检 + 打印导入起点；`export(fn,name,structure=None)` 把结构挂根层（自动补花括号） | 无（被 import） | 由调用者命名 | 2026-10-05（被 lt_street/lt_loop/lt_probe187 反复调用，全部无损 True） |
-| lt_probe187.py | 1.5.87 探针：A 官方 particle_emitter 原文 / B 新键名粒子 / C 扇叶+stayAnimated / D light 亮度15 / E 门 state→灯 / F 自激灯+总开关 / F10 十盏灯 / H 1/4 圆柱墙(R=8格+4px 倒角) / I 30° 斜板(11 分量可变形盒)；样品间隔 2 格排开 | 无（自建体素 + SDF） | probe_187.txt | 2026-10-05（lt_root 断言通过 + lt_tree [问题] 无；9980 B / 242 盒 / 导入起点 (0,0,0)） |
+| lt_probe187.py | 1.5.87 探针：A 官方 particle_emitter 原文 / B 新键名粒子 / C 扇叶+stayAnimated / D light 亮度15 / E 门 state→灯 / F 自激灯+总开关 / F10 十盏灯 / H 1/4 圆柱墙(R=8格+4px 倒角) / I 30° 斜板(11 分量可变形盒)；样品间隔 2 格排开。**修法 A：样品局部生成 + 只对 tiles 段做带断言的平移（`shift_tiles`），结构文本不碰；`trans()` 已删除** | 无（自建体素 + SDF） | probe_187.txt | 2026-10-06（lt_root ✓ + lt_tree ✓；9986 B / 242 盒 / 导入起点 (0,0,0)；C 轴心 [120,2,24,…]、E [224,2,9,…] 全部落在自家盒子内） |
 | lt_street.py | 主街路面 4 段×16 格（**随 v1 街区作废**，留作排版/SDF 参考） | 无（自建体素） | street_0..3.txt | 2026-10-05（4 段无损 True；起点 -800/-784/-768/-752, y=3, z=313） |
 | lt_loop.py | 自转扇叶样品：4 叶 + 青色发光轴，advancedDoor rotY 0→360（linear, 40 tick） | 无（自建体素） | loop_fan.txt | 2026-10-05（无损 True + lt_tree [问题] 无；线性关键帧编码有源码自检断言） |
 | lt_probe_j.py | 样品 J：light(level:0) 当开关 → 其子结构卷帘门被"信号"开/关（门的 `state` 输出 `con:"p.b0"` 跟父的 enabled） | 无（自建体素） | probe_j.txt | 2026-10-06（lt_root 断言通过 + lt_tree [问题] 无；851 B / 11 盒 / 导入起点 (0,0,0)） |
@@ -36,10 +36,10 @@
 | lt_verify_schem.py | **独立**校验 .schematic：gzip 魔数、解压后前 12 字节必须 `0A 00 09 "Schematic"`、根标签名、根下全部键与类型、关键键类型/长度、文件是否被完整消费（自带另一套极简 NBT 读取器，**不复用 lt_mass.py 的代码**） | schematic 文件 | 无（只打印） | 2026-10-06（mass_v0.schematic：所有检查通过 ✓，verify_exit=0） |
 | lt_probe_split.py | 把 `probe_187.txt` **切片**成单样品文件 `probe_A..I.txt`+`probe_F10.txt`（各带独立根 fixed），并生成去掉嫌疑样品的 `probe_187_safe.txt`；顺带逐样品检查时间轴数组首元素是否 0~3（本次就是靠它+崩溃报告定位到 E） | probe_187.txt | probe_A..I.txt、probe_F10.txt、probe_187_safe.txt | 2026-10-06（10 份全部 lt_root 断言通过 + lt_tree [问题] 无） |
 | lt_root.py | **根层守卫**：根有 children 就必须有 structure（缺则插入 + 硬断言）；CLI `selftest`/`verify`/`diff` | 根层文本（库） | 无（库；CLI 只打印） | 2026-10-05（selftest 全过 + verify 全部样品） |
-| lt_tree.py | 导入文本树/语法校验器：递归解析 tiles/structure/children，查 6 分量与 **7/11 分量可变形盒**、上界排他、count、min/size（全树并集）、structure id（含 1.5.87 新增 id）、advancedDoor 的 offGrid 陷阱 | 蓝图 txt | 无（只打印） | 2026-10-05（校验 mech_test + mech_v1~v5 + loop_fan + ramen_curtain + street_0..3 + probe_187，全部 [问题] 无） |
+| lt_tree.py | 导入文本树/语法校验器：递归解析 tiles/structure/children，查 6 分量与 **7/11 分量可变形盒**、上界排他、count、min/size（全树并集）、structure id（含 1.5.87 新增 id）、advancedDoor 的 offGrid 陷阱；**新增守卫①时间轴形态（首元素 0~3、长度 2+3*count(+hermite 3)）②axisCenter 必须落在本节点盒子包围盒内**；有问题返回 exit 1 | 蓝图 txt | 无（只打印；退出码 0/1） | 2026-10-06（12 份探针全过；2 份反例夹具必须报错 ✔） |
 
 ## 说明
 - `nexus_lab.txt` / `neon_tower.txt` / `neon_city.txt` / `ramen_shop.txt` / `cyber_lab.txt` 等大蓝图**不入库**（脚本可重新生成）。
 - `lt_src/`、`cc_src/` 反编译源码与各 jar 也不入库（只读参考）。
-- 样品（`samples/`）：office_chair.txt（椅子）、med_bed.txt（床）、service_ladder.txt（梯子）、lab_door.txt（推拉门）、mech_test.txt（机关测试台）、loop_fan.txt（自转扇叶）。
+- 样品（`samples/`）：office_chair.txt（椅子）、med_bed.txt（床）、service_ladder.txt（梯子）、lab_door.txt（推拉门）、mech_test.txt（机关测试台）、loop_fan.txt（自转扇叶）、probe_187.txt + probe_187_safe.txt + probe_A~I/probe_F10（1.5.87 探针与单样品切片）、**broken_probe_187_timeline224.txt / broken_probe_E_timeline224.txt（崩溃反例夹具，lt_tree 必须报错）**。
 - 文档：`NOTES.md`（环境/结论/审美/进度/测试记录/1.5.87 基线核对）、`HANDOFF.md`（交接 + 源码结论 + 测试清单）、`DESIGN.md`（天梯城设计稿 v2 + R1~R8）、`PLAN.md`（天梯城总图 v2）、`PLAN_v1_old.md`（旧 v1 街区总图，已作废）。

@@ -147,6 +147,50 @@ def walk(s, i, depth, path, rep, st):
             if not blk or blk == "?":
                 st["issues"].append("%s 有条目缺 tile.block" % path)
 
+    # ===== 守卫①：时间轴数组形态 / 守卫②：axisCenter 落点（2026-10-06 新增；依据 "Invalid id 224" 崩溃）=====
+    # 教训：生成器**禁止用正则盲改 int 数组**。旧版 trans() 把 animation.rotY 也当坐标平移 →
+    #      首元素变成 224 → 游戏里 ValueTimeline.getType(224) 抛 RuntimeException: Invalid id 224（放置时崩）。
+    if "structure" in d:
+        sdg, _ = parse_obj(d["structure"], 0)
+        scopes = [("顶层", sdg)]
+        if "animation" in sdg:
+            scopes.append(("animation", parse_obj(sdg["animation"], 0)[0]))
+        for scope_name, scope in scopes:
+            for key in ("rotX", "rotY", "rotZ", "offX", "offY", "offZ"):
+                if key not in scope:
+                    continue
+                arr = ivec(scope[key])
+                where = "%s.%s" % (scope_name, key)
+                if len(arr) < 2:
+                    st["issues"].append("%s 时间轴 %s 太短: %s" % (path, where, arr))
+                    continue
+                t, cnt = arr[0], arr[1]
+                base, add = 2 + 3 * cnt, (3 if arr[0] == 3 else 0)
+                if t not in (0, 1, 2, 3):
+                    st["issues"].append(
+                        "%s 时间轴 %s 首元素=%d 非法（必须 0~3；游戏里 ValueTimeline.getType 会抛 "
+                        "RuntimeException: Invalid id %d）: %s" % (path, where, t, t, arr))
+                if len(arr) not in (base, base + add):
+                    st["issues"].append(
+                        "%s 时间轴 %s 长度=%d 与 count=%d 不符（应为 %d%s）: %s"
+                        % (path, where, len(arr), cnt, base,
+                           ("或 %d（hermite 附加 3）" % (base + add)) if add else "", arr))
+                rep.append("%s时间轴 %s = %s（type=%d count=%d）" % ("  " * depth, where, arr, t, cnt))
+        if "axisCenter" in sdg:
+            ac = ivec(sdg["axisCenter"])
+            rep.append("%saxisCenter = %s" % ("  " * depth, ac))
+            own = [r[:6] for _, rs, _ in els for r in rs]
+            if len(ac) >= 6 and own:
+                albo = [min(r[k] for r in own) for k in range(3)]
+                ahib = [max(r[k + 3] for r in own) for k in range(3)]
+                for k, ax in enumerate("XYZ"):
+                    a1, a2 = sorted((ac[k], ac[k + 3]))
+                    if a1 < albo[k] or a2 > ahib[k]:
+                        st["issues"].append("%s axisCenter 的 %s 段 [%d,%d] 超出本节点盒子范围 [%d,%d]"
+                                            % (path, ax, a1, a2, albo[k], ahib[k]))
+            elif len(ac) >= 6:
+                rep.append("%s[提示] 有 axisCenter 但本节点无自己的盒子，跳过落点校验" % ("  " * depth))
+
     kids = split_top(match(d["children"], 0)[0][1:-1]) if "children" in d else []
     rep.append("%s[%s] id=%s name=%s 条目=%d 盒=%d 子=%d"
                % ("  " * depth, path, sid, sname, len(els), nbox, len(kids)))
@@ -161,7 +205,7 @@ def report(fn):
         walk(s, 0, 0, "根", rep, st)
     except Exception as ex:
         print("!! %s 解析失败: %s" % (os.path.basename(fn), ex))
-        return
+        return 1
     acc = st["acc"]
     lo = [min(r[k] for r in acc) for k in range(3)]
     hi = [max(r[k + 3] for r in acc) for k in range(3)]
@@ -181,8 +225,11 @@ def report(fn):
         print("   [问题] 无")
     for line in rep:
         print("   " + line)
+    return 1 if st["issues"] else 0
 
 
 if __name__ == "__main__":
+    n = 0
     for f in sys.argv[1:]:
-        report(f)
+        n += report(f)
+    sys.exit(1 if n else 0)
