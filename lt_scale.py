@@ -59,10 +59,9 @@ def build(out, name, bevel=True):
         strips = []
         for s in (64, 128, 192):
             strips.append(M.bevel_edge(s - 2, 0, 0, s + 2, H, 2, w=1, axis="Y"))
-        extra = ",".join([s for s in strips if s])
-    # tiles = Part 导出的条目 + 倒角条目
-    all_tiles = "[%s%s]" % (tiles[tiles.index("[") + 1:tiles.rindex("]")],
-                            ("," + extra) if extra else "")
+        extra = M.merge_entries([s for s in strips if s])
+    # tiles = Part 导出的条目 + 倒角条目（都已是 {bBox|boxes:…,tile:{…}} 规范形状）
+    all_tiles = "[%s]" % ",".join([t for t in [tiles[tiles.index("[") + 1:tiles.rindex("]")], extra] if t])
     rects = _rects(all_tiles)
     lo = [min(r[i] for r in rects) for i in range(3)]
     hi = [max(r[i + 3] for r in rects) for i in range(3)]
@@ -104,6 +103,4 @@ def filler(out, target):
 print("== scale 规模样品（16×16 格 = 256×256 px）==")
 build("scale_A.txt", "scale_A", bevel=True)
 build("scale_B.txt", "scale_B", bevel=False)
-print("\n== 导入上限填充（Little Importer 单次上限未知，做三份给用户试）==")
-for t in (32768, 131072, 524288):
-    filler("limit_%dk.txt" % (t // 1024), t)
+print("\n（limit_* 上限填充已按要求取消：Little Importer 单次 ≥1MB 已实测可用，规则=单文件 ≤1MB）")

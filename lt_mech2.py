@@ -127,7 +127,103 @@ def particle(facing=1, settings=None, xo=24, yo=PLATE, tag="particle"):
     return p.tiles(tag), st
 
 
-# ===================== 几何 API（只向内 + 自动按格拆段）=====================
+# ===================== prism / arc_wall（按格裁剪 + 竖边 U/D 同偏移 + 只向内）=====================
+CS8 = {("min", "min", "min"): "WDN", ("min", "min", "max"): "WDS", ("max", "min", "min"): "EDN",
+       ("max", "min", "max"): "EDS", ("min", "max", "min"): "WUN", ("min", "max", "max"): "WUS",
+       ("max", "max", "min"): "EUN", ("max", "max", "max"): "EUS"}
+
+
+def _clip(poly, axis, value, keep_greater):
+    """Sutherland-Hodgman：按 axis=value 半平面裁剪"""
+    out = []
+    n = len(poly)
+    for i in range(n):
+        a, b = poly[i], poly[(i + 1) % n]
+        fa = (a[axis] - value) if keep_greater else (value - a[axis])
+        fb = (b[axis] - value) if keep_greater else (value - b[axis])
+        if fa >= 0: out.append(a)
+        if (fa >= 0) != (fb >= 0):
+            t = fa / (fa - fb)
+            out.append((a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t))
+    return out
+
+
+def _split_quad(poly):
+    """把凸多边形拆成 ≤4 顶点的凸块（超过 4 就用扇形拆）"""
+    if len(poly) <= 4: return [poly]
+    return [[poly[0], poly[i], poly[i + 1]] for i in range(1, len(poly) - 1)]
+
+
+def merge_entries(entries):
+    """把多个盒子条目按材质合并成【规范形状】{boxes:[…],tile:{block:"…"}}（lt_tree/游戏都吃这个形状）"""
+    bymat = {}
+    for e in entries:
+        if not e: continue
+        mm = re.search(r'tile:\{block:"([^"]+)"\}', e)
+        bm = re.search(r'(bBox|boxes):\[(.*?)\](?=,tile:)', e, re.S)
+        if not (mm and bm): continue
+        bymat.setdefault(mm.group(1), []).extend(re.findall(r'\[I;[-\d,]+\]', bm.group(2)))
+    out = []
+    for blk, arrs in bymat.items():
+        if len(arrs) == 1:
+            out.append('{bBox:%s,tile:{block:"%s"}}' % (arrs[0], blk))
+        else:
+            out.append('{boxes:[%s],tile:{block:"%s"}}' % (",".join(arrs), blk))
+    return ",".join(out)
+
+
+def prism(poly_xz, y0, y1, block="minecraft:quartz_block", ystep=16):
+    """俯视凸多边形（px）沿 y 拉伸：按方块格裁剪 → 每块 AABB + 4 条竖边最近顶点偏移（只向内）
+       · 同一条竖边的 U/D 两角偏移完全相同；Y 偏移恒 0；按 ystep 拆段，段间偏移相同"""
+    entries = []
+    xs = [p[0] for p in poly_xz]; zs = [p[1] for p in poly_xz]
+    ci0, ci1 = int(math.floor(min(xs) // 16)), int(math.floor(max(xs) // 16))
+    cz0, cz1 = int(math.floor(min(zs) // 16)), int(math.floor(max(zs) // 16))
+    for ci in range(ci0, ci1 + 1):
+        for cz in range(cz0, cz1 + 1):
+            p = poly_xz
+            p = _clip(p, 0, ci * 16, True); p = _clip(p, 0, (ci + 1) * 16, False)
+            p = _clip(p, 1, cz * 16, True); p = _clip(p, 1, (cz + 1) * 16, False)
+            if len(p) < 3: continue
+            for piece in _split_quad(p):
+                if len(piece) < 3: continue
+                px = [q[0] for q in piece]; pz = [q[1] for q in piece]
+                x0, x1 = int(math.floor(min(px))), int(math.ceil(max(px)))
+                z0, z1 = int(math.floor(min(pz))), int(math.ceil(max(pz)))
+                if x1 <= x0: x1 = x0 + 1
+                if z1 <= z0: z1 = z0 + 1
+                offs = []
+                for sx in ("min", "max"):
+                    for sz in ("min", "max"):
+                        ax = x0 if sx == "min" else x1
+                        az = z0 if sz == "min" else z1
+                        vx, vz = min(piece, key=lambda q: (q[0] - ax) ** 2 + (q[1] - az) ** 2)
+                        dx = min(0, int(math.floor(vx + 1e-9)) - ax)     # 只向内
+                        dz = min(0, int(math.floor(vz + 1e-9)) - az)
+                        if dx or dz:
+                            for sy in ("min", "max"):                    # ★ U/D 同偏移
+                                c = CS8[(sx, sy, sz)]
+                                if dx: offs.append((c, "X", dx))
+                                if dz: offs.append((c, "Z", dz))
+                for ys in range(y0, y1, ystep):                          # ★ 按格拆段、段间同偏移
+                    ye = min(ys + ystep, y1)
+                    arr = lt_tbox.encode([x0, ys, z0, x1, ye, z1], offs)
+                    entries.append('[{%s:[I;%s],tile:{block:"%s"}}]' % ("bBox", ",".join(map(str, arr)), block))
+    return merge_entries(entries)
+
+
+def arc_wall(R=128.0, thick=2.0, a0=0.0, a1=90.0, height=64, seg=16, block="minecraft:quartz_block"):
+    """1/4 圆弧壳墙：每段由内外弧上 4 个点组成四边形，交给 prism；返回 tiles 条目串"""
+    entries = []
+    for k in range(seg):
+        t1 = math.radians(a0 + (a1 - a0) * k / seg)
+        t2 = math.radians(a0 + (a1 - a0) * (k + 1) / seg)
+        ro, ri = R, R - thick
+        poly = [(ro * math.cos(t1), ro * math.sin(t1)), (ro * math.cos(t2), ro * math.sin(t2)),
+                (ri * math.cos(t2), ri * math.sin(t2)), (ri * math.cos(t1), ri * math.sin(t1))]
+        e = prism(poly, 0, height, block=block)
+        if e: entries.append(e)
+    return merge_entries([e for e in entries])
 def _inward(coords, offsets):
     """强制只向内：越界的偏移按 0 截断（第 25 条）"""
     x0, y0, z0, x1, y1, z1 = coords

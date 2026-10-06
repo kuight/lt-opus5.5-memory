@@ -238,6 +238,13 @@ def report(fn):
         print("!! %s 解析失败: %s" % (os.path.basename(fn), ex))
         return 1
     acc = st["acc"]
+    if not acc:
+        print("== %s  (%d 字节)  解析到 0 个盒子 —— tiles 段形状没被识别" % (os.path.basename(fn), len(s.encode("utf-8"))))
+        for x in st["issues"]:
+            print("   [问题] " + x)
+        print("   [问题] tiles 段解析为空（检查：条目是 {bBox:[I;…],tile:{…}} 还是 {boxes:[…],tile:{…}}，"
+              "以及逗号是否把条目连成一坨）")
+        return 1
     lo = [min(r[k] for r in acc) for k in range(3)]
     hi = [max(r[k + 3] for r in acc) for k in range(3)]
     if st["count"] is not None and int(st["count"]) != st["rootboxes"]:

@@ -57,6 +57,8 @@ def encode(coords, offsets, flips=()):
                 items.append((o["corner"], o["axis"], o["offset"]))
             else:
                 items.append(tuple(o))
+    # ★ 槽位顺序必须与掩码位序一致（bit(i*3+a) 升序），否则 decode 会把偏移配错角
+    items = sorted(items, key=lambda t: CORNERS.index(t[0]) * 3 + "XYZ".index(t[1]))
     mask, slots = 0, []
     for cname, ax, v in items:
         i, a = CORNERS.index(cname), "XYZ".index(ax)
