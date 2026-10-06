@@ -179,40 +179,87 @@ def merge_entries(entries):
     return merged
 
 
-def prism(poly_xz, y0, y1, block="minecraft:quartz_block", ystep=16):
-    """俯视凸多边形（px）沿 y 拉伸：按方块格裁剪 → 每块 AABB + 4 条竖边最近顶点偏移（只向内）
-       · 同一条竖边的 U/D 两角偏移完全相同；Y 偏移恒 0；按 ystep 拆段，段间偏移相同"""
+def prism(poly_xz, y0, y1, block="minecraft:quartz_block", ystep=16, band=None):
+    """俯视凸多边形沿 y 拉伸：按方块格裁剪(Sutherland-Hodgman) -> 每块 AABB(floor/ceil 包围盒)
+       + 4 条竖边各自对到最近的真顶点(取整)：同竖边的 U/D 偏移完全相同、Y 偏移恒 0、按 ystep 拆段
+       + 偏移只朝盒内（min 侧向内=正、max 侧向内=负；旧版一律 min(0,.) 会啃掉内弧 1px）"""
     entries = []
-    xs = [p[0] for p in poly_xz]; zs = [p[1] for p in poly_xz]
-    ci0, ci1 = int(math.floor(min(xs) // 16)), int(math.floor(max(xs) // 16))
-    cz0, cz1 = int(math.floor(min(zs) // 16)), int(math.floor(max(zs) // 16))
+    xs = [q[0] for q in poly_xz]
+    zs = [q[1] for q in poly_xz]
+    ci0, ci1 = int(math.floor(min(xs) / 16.0)), int(math.floor(max(xs) / 16.0))
+    cz0, cz1 = int(math.floor(min(zs) / 16.0)), int(math.floor(max(zs) / 16.0))
     for ci in range(ci0, ci1 + 1):
         for cz in range(cz0, cz1 + 1):
-            p = poly_xz
-            p = _clip(p, 0, ci * 16, True); p = _clip(p, 0, (ci + 1) * 16, False)
-            p = _clip(p, 1, cz * 16, True); p = _clip(p, 1, (cz + 1) * 16, False)
-            if len(p) < 3: continue
-            for piece in _split_quad(p):
-                if len(piece) < 3: continue
-                px = [q[0] for q in piece]; pz = [q[1] for q in piece]
-                x0, x1 = int(math.floor(min(px))), int(math.ceil(max(px)))
-                z0, z1 = int(math.floor(min(pz))), int(math.ceil(max(pz)))
-                if x1 <= x0: x1 = x0 + 1
-                if z1 <= z0: z1 = z0 + 1
+            poly = poly_xz
+            poly = _clip(poly, 0, ci * 16, True)
+            poly = _clip(poly, 0, (ci + 1) * 16, False)
+            poly = _clip(poly, 1, cz * 16, True)
+            poly = _clip(poly, 1, (cz + 1) * 16, False)
+            if len(poly) < 3:
+                continue
+            for piece in _split_quad(poly):
+                if len(piece) < 3:
+                    continue
+                vx = [q[0] for q in piece]
+                vz = [q[1] for q in piece]
+                x0, x1 = int(math.floor(min(vx))), int(math.ceil(max(vx)))
+                z0, z1 = int(math.floor(min(vz))), int(math.ceil(max(vz)))
+                if x1 <= x0:
+                    x1 = x0 + 1
+                if z1 <= z0:
+                    z1 = z0 + 1
                 offs = []
                 for sx in ("min", "max"):
                     for sz in ("min", "max"):
                         ax = x0 if sx == "min" else x1
                         az = z0 if sz == "min" else z1
-                        vx, vz = min(piece, key=lambda q: (q[0] - ax) ** 2 + (q[1] - az) ** 2)
-                        dx = min(0, int(math.floor(vx + 1e-9)) - ax)     # 只向内
-                        dz = min(0, int(math.floor(vz + 1e-9)) - az)
+                        tx, tz = min(piece, key=lambda q: (q[0] - ax) ** 2 + (q[1] - az) ** 2)
+                        dx = int(round(tx)) - ax
+                        dz = int(round(tz)) - az
+                        dx = min(0, dx) if sx == "max" else max(0, dx)
+                        dz = min(0, dz) if sz == "max" else max(0, dz)
                         if dx or dz:
-                            for sy in ("min", "max"):                    # ★ U/D 同偏移
+                            for sy in ("min", "max"):
                                 c = CS8[(sx, sy, sz)]
-                                if dx: offs.append((c, "X", dx))
-                                if dz: offs.append((c, "Z", dz))
-                for ys in range(y0, y1, ystep):                          # ★ 按格拆段、段间同偏移
+                                if dx:
+                                    offs.append((c, "X", dx))
+                                if dz:
+                                    offs.append((c, "Z", dz))
+                # ---- 环带钳制：若某竖边角点算完后仍越出目标环带，就在 ±1px 内把它拉回来 ----
+                if band is not None:
+                    rin, rout, tol = band[0], band[1], band[2]
+                    for sx2 in ("min", "max"):
+                        for sz2 in ("min", "max"):
+                            ax2 = x0 if sx2 == "min" else x1
+                            az2 = z0 if sz2 == "min" else z1
+                            cur = {(c, a): v for (c, a, v) in offs}
+                            for sy2 in ("min", "max"):
+                                c2 = CS8[(sx2, sy2, sz2)]
+                                cx = ax2 + cur.get((c2, "X"), 0)
+                                cz = az2 + cur.get((c2, "Z"), 0)
+                                rr = math.hypot(cx, cz)
+                                if rr < rin - tol or rr > rout + tol:
+                                    best = None
+                                    for ddx in (-1, 0, 1):
+                                        for ddz in (-1, 0, 1):
+                                            nx, nz = cx + ddx, cz + ddz
+                                            if not (x0 <= nx <= x1 and z0 <= nz <= z1):
+                                                continue
+                                            nr = math.hypot(nx, nz)
+                                            err = 0.0 if (rin - tol <= nr <= rout + tol) else min(abs(nr - rin), abs(nr - rout))
+                                            if best is None or err < best[0]:
+                                                best = (err, ddx, ddz)
+                                    if best:
+                                        _, ddx, ddz = best
+                                        if ddx:
+                                            offs = [o for o in offs if not (o[0] == c2 and o[1] == "X")]
+                                            if cur.get((c2, "X"), 0) + ddx:
+                                                offs.append((c2, "X", cur.get((c2, "X"), 0) + ddx))
+                                        if ddz:
+                                            offs = [o for o in offs if not (o[0] == c2 and o[1] == "Z")]
+                                            if cur.get((c2, "Z"), 0) + ddz:
+                                                offs.append((c2, "Z", cur.get((c2, "Z"), 0) + ddz))
+                for ys in range(y0, y1, ystep):
                     ye = min(ys + ystep, y1)
                     arr = lt_tbox.encode([x0, ys, z0, x1, ye, z1], offs)
                     entries.append('[{%s:[I;%s],tile:{block:"%s"}}]' % ("bBox", ",".join(map(str, arr)), block))
@@ -228,7 +275,7 @@ def arc_wall(R=128.0, thick=2.0, a0=0.0, a1=90.0, height=64, seg=16, block="mine
         ro, ri = R, R - thick
         poly = [(ro * math.cos(t1), ro * math.sin(t1)), (ro * math.cos(t2), ro * math.sin(t2)),
                 (ri * math.cos(t2), ri * math.sin(t2)), (ri * math.cos(t1), ri * math.sin(t1))]
-        e = prism(poly, 0, height, block=block)
+        e = prism(poly, 0, height, block=block, band=(R - thick - 0.5, R + 0.5, 0.5))
         if e: entries.append(e)
     return merge_entries([e for e in entries])
 def _inward(coords, offsets):

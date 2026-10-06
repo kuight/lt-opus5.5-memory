@@ -43,7 +43,7 @@
 | lt_mech2.py | **机关标准写法接口库**（不动 lt_np 旧接口）：`controller` / `light` / `blink`(相位用 delay 错开) / `door_slide` / `door_rot` / `particle`(facing 默认 1=UP) / `tbox_face` / `bevel_edge`；只向内偏移 + 自动按格拆段；自带自测（重建 E2/F2/J2/H2b 做结构等价比较） | 无（库 + 自测） | mech2_E2/F2/J2/H2b.txt（自测产物） | 2026-10-06（4 项结构等价 ✔） |
 | lt_scale.py | 规模样品：16×16 格舱壁地表（scale_A 带 45° 倒角 / scale_B 不带）；**limit_* 上限填充已按要求删除（Little Importer ≥1MB 实测可用，规则=单文件 ≤1MB）** | lt_mech2 | scale_A.txt、scale_B.txt | 2026-10-06（scale_B ✓✓✓；scale_A 待重生成） |
 | lt_geom.py | **几何自检**（含可变形盒的文件必过）：解码 8 角点/6 面 → 面不共面(容差 0.01px)、竖边 U/D 偏移一致、与目标弧面 2000 点比对（最大偏差 >1px 报问题）；出 top/front PNG | 蓝图 txt（+可选弧参数） | `<file>_top.png`、`<file>_front.png` | 2026-10-06（反例 probe_H2b 报 232 问题 ✔） |
-| lt_h45.py | 生成 H4（石英）/ H5（FCB 中灰 `flatcoloredblock80:3`）/ I2（3×3 格 30° 原生 8 分量斜坡） | lt_mech2（arc_wall）/ lt_tbox | probe_H4.txt、probe_H5.txt、probe_I2.txt | 2026-10-06（I2 过三项 ✔；**H4/H5 的 lt_tree 解析为空待修**） |
+| lt_h45.py | 生成 H4（**FCB 浅灰 `flatcoloredblock80:7`**）/ H5（FCB 中灰 `flatcoloredblock80:3`）/ I2（3×3 格 30° 原生 8 分量斜坡） | lt_mech2（arc_wall）/ lt_colors / lt_tbox | probe_H4.txt、probe_H5.txt、probe_I2.txt | 2026-10-06（**H4/H5 经 prism 修复后仍过不了 lt_geom ⇒ 待修**；I2 三项全过 ✓） |
 | lt_root.py | **根层守卫**：根有 children 就必须有 structure（缺则插入 + 硬断言）；CLI `selftest`/`verify`/`diff` | 根层文本（库） | 无（库；CLI 只打印） | 2026-10-05（selftest 全过 + verify 全部样品） |
 | lt_tree.py | 导入文本树/语法校验器：递归解析 tiles/structure/children，查 6 分量与 **7/11 分量可变形盒**、上界排他、count、min/size（全树并集）、structure id（含 1.5.87 新增 id）、advancedDoor 的 offGrid 陷阱；**新增守卫①时间轴形态（首元素 0~3、长度 2+3*count(+hermite 3)）②axisCenter 必须落在本节点盒子包围盒内**；有问题返回 exit 1 | 蓝图 txt | 无（只打印；退出码 0/1） | 2026-10-06（12 份探针全过；2 份反例夹具必须报错 ✔） |
 
@@ -59,7 +59,7 @@
 | probe_I.txt | ✓✓⚠（11 分量旧格式→警告） | **移出可交付** | — |
 | probe_H/H2/H3/H2b/H3b | H/H2/H3 ✗（越界）；H2b/H3b 几何 ✗（232 问题） | **几何反例夹具（不交付）** | H2b/H3b：鳞片歪墙、曲面没做成 |
 | probe_E.txt | ✗（时间轴 224） | **崩溃夹具（不交付）** | — |
-| probe_H4.txt / probe_H5.txt | ✓✓✓（各 **208 个可变形盒、0 问题**；弧面 2000 点比对**最大/平均偏差 0.00px**） | **可交付** | 待测（曲面台阶感 / 大面材质二选一） |
+| probe_H4.txt / probe_H5.txt | **✗ lt_geom 未过**（32 角点越环带、最大偏差 2.35px / 平均 0.40px；lt_root ✓ lt_tree ✓） | **待修（不交付）** | 待测（修好后才能测） |
 | density_test.txt | ✓✓✓ | 可交付 | 开 50 / 关 100+ fps（密度 5.4 盒/格） |
 ## 说明
 - `nexus_lab.txt` / `neon_tower.txt` / `neon_city.txt` / `ramen_shop.txt` / `cyber_lab.txt` 等大蓝图**不入库**（脚本可重新生成）。

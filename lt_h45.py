@@ -37,7 +37,7 @@ def build(out, name, entries):
 
 
 print("== H4（石英）/ H5（FCB 中灰）==")
-build("probe_H4.txt", "probe_H4", M.arc_wall(R, TH, 0.0, 90.0, H, SEG, block="minecraft:quartz_block"))
+build("probe_H4.txt", "probe_H4", M.arc_wall(R, TH, 0.0, 90.0, H, SEG, block=lt_colors.fc("#c8c8c8")))
 gray = fc("#808080")
 print("   H5 选色：lt_colors.fc('#808080') = %s" % (gray,))
 build("probe_H5.txt", "probe_H5", M.arc_wall(R, TH, 0.0, 90.0, H, SEG, block=gray))

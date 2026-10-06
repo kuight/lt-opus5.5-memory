@@ -107,10 +107,19 @@ def check(path, arc=None):
                     a1p, b1p = seq[k], seq[(k + 1) % 4]
                     cr = (b1p[0] - a1p[0]) * (pz - a1p[1]) - (b1p[1] - a1p[1]) * (px - a1p[0])
                     if cr < -1e-6: inside = False; break
-                best = min(best, 0.0 if inside else dmin)
+                best = min(best, dmin)   # 纯边界距离：点在面内也算到边的距离（弦-弧差）
             tot += best
             mx = max(mx, best)
         avg = tot / n
+        # 角点必须落在目标环带内（容差 0.5px）
+        nb = 0
+        for pts in polys:
+            for nm2, (x2, y2, z2) in pts.items():
+                rr2 = math.hypot(x2, z2)
+                if rr2 < (R - th) - 0.5 or rr2 > R + 0.5:
+                    nb += 1
+        if nb:
+            issues.append("有 %d 个角点越出目标环带 [%.1f, %.1f]±0.5px" % (nb, R - th, R))
         if mx > 1.0:
             issues.append("与目标弧面最大偏差 %.2f px > 1px（平均 %.2f px）" % (mx, avg))
     # ④ PNG
