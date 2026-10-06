@@ -65,6 +65,8 @@
   - A：黑色粒子，圆弧形上升；B：白色粒子，水平移动
   - J：右键开、再按关 ✔，但仍闪且有放置声
   - E、F、F10：灯完全不亮，F10 帧率无变化
+- **2026-10-06 用户实测第三批（原话）**：E2 **门和灯同步 ✔**；J2 **不闪、无声 ✔**；F2 会自己一亮一灭、**周期不到 1 秒**、能停，但**不是一右键马上停**，要等当前这次亮灭做完才停；F2x10 十盏同时开或关时**掉一下帧（几十帧）**，平时体感不明显；**H3（旧版、角向外偏移）形状扭曲、有"反过来"的感觉**（印证第 25 条）；density_test 贴近 **50fps**、10 格外 **70**、平时 70~80。
+- F2"停止有延迟"的原因：**输出条件排队后无法取消** —— 排程用的是普通队列 `SignalTicker.java:27/32-33`（`List<SignalScheduleTicket>`，搜不到 cancel/remove 取消路径），而 `InternalSignalOutput.update():90-108` 每次只把**新的**状态 `handler.schedule(outputState)` 入队 ⇒ 总开关关掉时**已排队的那次翻转仍会到期执行**，所以必须等当前这次亮/灭走完。（高置信推断，未通读 ticker 全部代码）
 - 旧蓝图导入后发光弱/不亮，但原先放着的旧建筑亮度正常（原因待测 G）
 - **2026-10-06 probe_187 放置崩溃**，原因：**我自己排版脚本的 `trans()` 盲扫所有 `[I;…]` 数组、把 `animation.rotY` 时间轴也当坐标平移了** → `[I;0,2,0,0,0,20,…]` 被改成 `[I;224,4,0,…]`，`ValueTimeline.read` 拿 `array[0]=224` 去 `getType` → `java.lang.RuntimeException: Invalid id 224`（Client thread、**放置时**、`LittleAdvancedDoor.loadFromNBTExtra:198`）。触发样品 = **E**（唯一走"整节点平移"分支的样品）；其余 8 个样品的结构文本未被平移、时间轴首元素仍为 0 ✓。同类缺陷共 3 处（`trans()` / `lt_probe187` 的包围盒 / `lt_probe_split` 的 `boxes_of`），已全部定位，修法见 HANDOFF §4☆。
 - **G 结果（2026-10-06）**：在原先放着的**旧发光小方块**旁边放置/破坏方块后，该格光照被重算并**变暗**；小方块外观仍然发光，但**不再照亮周围方块**（待用户截图确认）。
@@ -105,8 +107,13 @@
 22. **K 解码（187 原生可变形盒）**：数组 = `[x1,y1,z1,x2,y2,z2, indicator, word…]`。`indicator`：bit31 = 可变形标记（所以 `LittleBox.createBox:1127-1129` 用 `array[6] < 0` 判分支）；bits24-29 = 六面 `flipped`（`LittleTransformableBox.java:228-244`）；**bits0-23 = `bit(i*3+a)` 标记"角 i 的轴 a 存了偏移"**（`:274-285`）。`word`：每 2 个 16-bit 有符号 short 打包进一个 int（偶索引取高 16、奇索引取低 16，`:251-263`）；偏移含义 = 该角该轴坐标 = **基础角坐标 + 偏移**（`:860`）。角序 = `EUN,EUS,EDN,EDS,WUN,WUS,WDN,WDS`（`cc_src/com/creativemd/creativecore/common/utils/math/box/BoxUtils.java:221-229`）。K 样本 `[2,0,0,14,7,11,-2147418096,-393223]` ⇒ indicator `0x80010010`（bit4=(角1,Y)、bit16=(角5,Y)）+ word `0xFFF9FFF9`（高/低 16 都是 −7）⇒ **角 EUS（槽0）与 角5 WUS（槽1）的 Y 各 −7px**（是 **Y** 轴，不是别的轴——2026-10-06 笔误更正）。工具：`lt_tbox.py`（decode/encode，**对 K 往返逐位一致 ✔**）。
 
 23. **FCB 发光小方块 = 只发光不照明、不漏光**（2026-10-06 用户截图确认：FCB 发光细条贴墙，**墙面未被照亮**）⇒ **照明一律用 `light` 结构**；`lt_ramen.py` 的 **LEAKFIX 退役**（代码先保留，但**不再要求漏光检查**）。旁证：1.5.87 对小方块自发光做体积加权（`*= getPercentVolume`），1px 级亮度≈1。
-24. **particle_emitter 默认写 `facing:1`（UP）**；`EnumFacing` 序 = **DOWN0 UP1 NORTH2 SOUTH3 WEST4 EAST5**（速度是 facing 局部系，见第 21 条）。
+24. facing 序 = DOWN0 UP1 NORTH2 SOUTH3 WEST4 EAST5；粒子默认 `facing:1`。
 25. **可变形盒的角偏移"越出声明 AABB"有风险**：`LittleTransformableBox.setBounds(:1596-1623)` 会把几何包围盒**夹回**声明范围（`minX = max(minX, oldMinX)`、`maxX = min(maxX, oldMaxX)`）；保存时 6 坐标就是该 AABB（`:481-490`），`getBox` 也只按 AABB 建碰撞盒（`:216-221`）⇒ 面可能画到 AABB 外，而**记账/按格切分/碰撞只认 AABB** ⇒ 不一致。**规则：角偏移只写"向内或 0"**（`lt_tree` 已加检查，越界报 `[问题]`）。H2/H3（有 +1/-1/-8 等向外偏移）现已被标为问题，改用 **H2b/H3b**。
 26. **跨格可变形盒的切分**：放置时走 `PlacePreview.split(...)`（`Placement.java:296` `pp.split(...)`）按格拆开。❗"切开处会不会有缝/丢面"**没有逐行确认**（因此 H2b/H3b 主动**按格高拆成 4 段**，规避风险）。
+
+## 机关标准写法（2026-10-06 起）
+- **控制器模式**：根 `fixed` → **控制器 `light`(level:0，右键 toggle)** → 门 / 灯 / 粒子**全部作为它的兄弟子结构**，各自 `con` 引用 `p.b0`（= 控制器的 `enabled`）。**灯永远不能挂在门下面**（门动画会把 children 搬进动画假世界 ⇒ 灯不亮，见第 17 条）。
+- **门默认 `stayAnimated:1b`**（起点必须"对齐"：旋转 360 的整数倍、位移 0，见第 18 条与 §3.5），否则关门结束会把方块放回去 ⇒ 闪一下 + 放置声。
+- **自激闪烁**：`con:"!b0&p.b0"` + `delay`（`b0`=自己、`p.b0`=控制器）；会闪的 light **少用 + 相位错开**（`blink(level, delay, phase)` 用不同 delay 错开相位），因为每次翻转都会重算光照 → 掉帧。
 
 ## 待验证规则（已转正，见第 23 条）
