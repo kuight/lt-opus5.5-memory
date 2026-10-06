@@ -41,7 +41,9 @@
 | lt_h23.py | 用原生可变形盒做**无台阶**的 1/4 圆柱墙（16 个多边形切面）：H2 石英 / H3 FCB 灰 | lt_tbox | probe_H2.txt、probe_H3.txt | 2026-10-06（各 16 盒，lt_root ✓ + lt_tree ✓） |
 | lt_h23b.py | H2b/H3b：**只向内偏移** + 每切面按格高拆 4 段的可变形盒圆柱墙（规避 `setBounds` 夹回 AABB 的风险） | lt_tbox | probe_H2b.txt、probe_H3b.txt | 2026-10-06（各 64 盒，lt_root ✓ + lt_tree ✓） |
 | lt_mech2.py | **机关标准写法接口库**（不动 lt_np 旧接口）：`controller` / `light` / `blink`(相位用 delay 错开) / `door_slide` / `door_rot` / `particle`(facing 默认 1=UP) / `tbox_face` / `bevel_edge`；只向内偏移 + 自动按格拆段；自带自测（重建 E2/F2/J2/H2b 做结构等价比较） | 无（库 + 自测） | mech2_E2/F2/J2/H2b.txt（自测产物） | 2026-10-06（4 项结构等价 ✔） |
-| lt_scale.py | 规模样品：16×16 格舱壁地表（scale_A 带 45° 倒角 / scale_B 不带）+ 三份导入上限填充（32K/128K/512K） | lt_mech2 | scale_A/B.txt、limit_32k/128k/512k.txt | 2026-10-06（⚠ scale_A 与三份 limit_* 目前过不了 lt_tree，见 HANDOFF §6 i） |
+| lt_scale.py | 规模样品：16×16 格舱壁地表（scale_A 带 45° 倒角 / scale_B 不带）；**limit_* 上限填充已按要求删除（Little Importer ≥1MB 实测可用，规则=单文件 ≤1MB）** | lt_mech2 | scale_A.txt、scale_B.txt | 2026-10-06（scale_B ✓✓✓；scale_A 待重生成） |
+| lt_geom.py | **几何自检**（含可变形盒的文件必过）：解码 8 角点/6 面 → 面不共面(容差 0.01px)、竖边 U/D 偏移一致、与目标弧面 2000 点比对（最大偏差 >1px 报问题）；出 top/front PNG | 蓝图 txt（+可选弧参数） | `<file>_top.png`、`<file>_front.png` | 2026-10-06（反例 probe_H2b 报 232 问题 ✔） |
+| lt_h45.py | 生成 H4（石英）/ H5（FCB 中灰 `flatcoloredblock80:3`）/ I2（3×3 格 30° 原生 8 分量斜坡） | lt_mech2（arc_wall）/ lt_tbox | probe_H4.txt、probe_H5.txt、probe_I2.txt | 2026-10-06（I2 过三项 ✔；**H4/H5 的 lt_tree 解析为空待修**） |
 | lt_root.py | **根层守卫**：根有 children 就必须有 structure（缺则插入 + 硬断言）；CLI `selftest`/`verify`/`diff` | 根层文本（库） | 无（库；CLI 只打印） | 2026-10-05（selftest 全过 + verify 全部样品） |
 | lt_tree.py | 导入文本树/语法校验器：递归解析 tiles/structure/children，查 6 分量与 **7/11 分量可变形盒**、上界排他、count、min/size（全树并集）、structure id（含 1.5.87 新增 id）、advancedDoor 的 offGrid 陷阱；**新增守卫①时间轴形态（首元素 0~3、长度 2+3*count(+hermite 3)）②axisCenter 必须落在本节点盒子包围盒内**；有问题返回 exit 1 | 蓝图 txt | 无（只打印；退出码 0/1） | 2026-10-06（12 份探针全过；2 份反例夹具必须报错 ✔） |
 
@@ -51,7 +53,7 @@
 |---|---|---|---|
 | probe_I2.txt | ✓✓✓（1 盒，8 分量原生） | **可交付** | **没问题 ✔** |
 | scale_B.txt（609 盒） | ✓✓✓（无变形盒） | **可交付** | 开光影 ≈**20fps** / 关光影 ≈**40fps**（**比 density_test 还卡，待排查 §5**） |
-| scale_A.txt | ✓✓✓（倒角条已修） | **可交付** | 待测 |
+| scale_A.txt | 需用修复后代码重生成 + 补跑 lt_geom | **待重生成（不交付）** | 待测 |
 | probe_C/D/E2/F2/F2x10/J2 | ✓✓✓ | **可交付** | 均 ✔（E2 门灯同步、J2 不闪无声、F2 自闪可停但有 delay 延迟、F2x10 掉帧） |
 | probe_A.txt / probe_B.txt | ✓✓（无变形盒） | 可放置 | 黑色圆弧上升 / 白色水平移动（已解释，见 NOTES 21） |
 | probe_I.txt | ✓✓⚠（11 分量旧格式→警告） | **移出可交付** | — |

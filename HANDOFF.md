@@ -9,14 +9,14 @@
 
 1. 先写 `probe.txt` 并用 `dir` 确认；**不要用命令把大段文本打到终端**，用 `read`(offset/limit) / `grep` / `glob` 工具；凡是落盘立刻读回验证。
 2. **三条规矩（用户 2026-10-05 明确要求）**
-   - (a) **设计任何建筑/功能之前，必须先查资料对照设计目标**（源码 `lt_src_187`、官方 jar 内资源、NOTES/HANDOFF/DESIGN 的既有结论）。**联网搜索 401 期间，只抓用户指定的 URL**，不要自己乱逛。
+   - (a) **设计建筑/功能/物件之前，必须先搜索科幻作品、建筑案例、工程原理**，尽量贴合设计目标，**设计稿里写明参考来源**；**技术问题查 `lt_src_187` 源码**（不是只看笔记）。
    - (b) **测试要压缩到 2~3 张截图**：测试清单必须写明拍摄角度/站位，让用户照着拍。
    - (c) **每轮结束更新 NOTES/HANDOFF 并推送，回报完整 SHA**；push 失败**原样贴报错**，不要换别的方式绕过。
 3. 工具侧的坑（本会话踩过）
    - PowerShell 的 `Copy-Item`/`Test-Path` 把 `[...]` 当通配符 → mods 里带方括号的 jar 用 `-LiteralPath` 或先 `Get-ChildItem | Where-Object` 拿对象。
    - `java -jar cfr.jar` 传**中文路径**参数会被 ANSI 解码搞坏（`No such jar file E:\work\????\...`）→ jar/输出目录放纯 ASCII 路径，跑完再搬回。
    - `.ps1` 被执行策略挡 → 用 `.bat` 包装（已有 `put.bat`/`put.ps1`，一键把蓝图 JSON 放进剪贴板）。
-   - push 到 GitHub 时通时不通（`Recv failure` / `Failed to connect …443`）→ 原样报错，网络好了再推。
+   - push 到 GitHub 时通时不通 → **已在 git 设全局代理**：`http.proxy` / `https.proxy` = **`http://127.0.0.1:7897`**（Clash Verge / verge-mihomo 的系统代理端口）。**Clash 没开时 push 会失败**，先确认代理在运行；失败时原样贴报错，不换别的方式绕。
 
 ---
 
@@ -96,7 +96,7 @@
 - **新写法键表**：`tickDelay:int, tickCount:int, ticker:int, speedX/Y/Z:float, spread:float`（+圆形扩散 `steps:int`）、`settings:{color,lifetime,lifetimeDeviation,gravity,startSize,endSize,sizeDeviation,randomColor,collision}`（`LittleParticleEmitter.java:169-178`、`:358-381`）、`facing:int`（方向字段，默认 UP=4）、输出端口 `disabled`
 - **g 可变形盒（1.5.87 新增）**：`LittleBox.createBox(int[])`（`:1120-1139`）——**6 分量**=普通盒；**7 分量**=`[6 坐标, slice id]`；**11 分量**=`[6 坐标, slice id, 4 个 float 位(startOne,startTwo,endOne,endTwo)]`（`Float.intBitsToFloat`）；187 里 `<0` 的 slice id 走另一套通用编码 ❓。**pre199 有同一套 7/11 编码但走切片盒**（`lt_src/LittleBox.java:1051-1060`），**没有可变形盒** ⇒ 同一文本两版解释不同。
 
-### ☆ 2026-10-06 崩溃事件（probe_187 放置崩）与**待批准**修法
+### ☆ 2026-10-06 崩溃事件（probe_187 放置崩）与**已实施**修法
 
 - **异常**：`java.lang.RuntimeException: Invalid id 224` @ `ValueTimeline.getType(ValueTimeline.java:24-28)`；线程 = **Client thread**；时机 = **放置（导入）时**：`Placement.placeTiles(:219)` → `PlacementBlock.place(:516)` → `TileEntityLittleTiles.updateTilesSecretly(:282)` → `PlacementStructurePreview.place(:617)` → `StructureTileList.setStructureNBT(:118)` → `create(:232)` → `LittleStructure.loadFromNBT(:579)` → **`LittleAdvancedDoor.loadFromNBTExtra(:198)`**
 - **触发样品 = E**（唯一走"整节点平移"分支的样品）；证据：文件里只有 E 的 `animation.rotY` 首元素是 224（`[224, 4, 0, …]`），其余 8 个样品的结构文本没被平移、时间轴首元素都是 0
@@ -127,7 +127,7 @@
 - `LittleDoor.performInternalOutputChange`（`LittleDoor.java:176-186`）：当端口名 `"state"` 且 `opened != output.getState()[0]` 且不在运动中 → `activate(DoorActivator.SIGNAL, null, null)` ⇒ **信号写门的 state 输出即可开关门**，且 SIGNAL 路径不受 `disableRightClick` 限制 ✔
 - ⇒ 这才是"按钮控制开关门"的正解（按钮走 openDoor 只能开，见 ②）
 
-### ★★ 开关门正解（源码推导，**待 J 实测**）
+### ★★ 开关门正解（源码推导；**J / J2 / E2 已实测通过**）
 > "把门做成某个开关结构的子结构，门的 `state` 输出写 `con` 引用父的输出" —— 这样**同一个门既能被开也能被关**。
 
 ```json
@@ -148,7 +148,9 @@
 | 调度器入口 | `LittleStructure.changed(ISignalComponent)`（`:839-841`）→ `schedule()`；`ISignalSchedulable.schedule()`（`:29`） |
 ⇒ **"父（乃至任意节点）的输出变化最终会让全树的 `con` 被重新求值" = 成立**（不是父→子单向，而是"冒泡到根 + 根递归全树"）✔ 因此 E/F/J 的写法在机制上可行，**J 一测就能验证整条链路**。
 
-### g-2. 7/11 分量盒在 187 是"旧切片兼容格式"
+### g-2. 7/11 分量盒 / 原生可变形盒
+- **原生编码已解码**：见 **NOTES 第 22 条 + `lt_tbox.py`**（`[6坐标, indicator, word…]`，bit31 标记 / bits24-29 六面 flip / bits0-23 掩码，word 里 16-bit short 打包，偏移 = 基础角 + 偏移；角序 EUN,EUS,EDN,EDS,WUN,WUS,WDN,WDS）；K 样本往返**逐位一致 ✔**。
+- **7 / 11 分量为旧格式**（`LittleSlice` 编码），`lt_tree` 只报 **`[警告]`**，不再当问题。
 - 1.5.87 的 `LittleBox.createBox`（`:1120-1139`）对 7/11 分量的解释**沿用了旧的切片编码**（`slice id` + 4 个 float 位），返回的却是 `LittleTransformableBox`；**原生可变形盒自己的编码格式未知**（`slice id < 0` 走通用构造 `:1128-1129`，含义没读出来 ❓）
 - ⇒ **不要凭猜测手写可变形盒**：以游戏内导出为准 —— **测试项 K**（用 LT 的斜面/变形工具做一块斜面，蓝图复制导出，把该 tile 的盒子数组原样贴回来）
 
