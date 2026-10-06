@@ -42,6 +42,7 @@
 - 不做积水（用户自己开雨和光影）
 - 赛博朋克味要贯穿侧墙、路面，而不只是门面
 - 用户觉得分段做、做得少就是敷衍：每一轮都要拿出足够的量和细节
+- **用户否决"外圈低精城市海"**：低精部分会拉低整体精度感，要求"整座城都是小方块"的观感（见 DESIGN.md【精度原则】）
 - 风格偏科幻、高科技；赛博朋克的“旧/乱”用改装、外露线缆、维修痕迹表现，不用日常市井物件（消防栓、共享单车、普通垃圾桶等否决）
 - 1.5.87 新光照渲染更有科幻感，保持；用户吐槽“模块化堆砌感、缺曲线斜面过渡微雕、功能贴近现在” → 设计规则 R1~R8 见 DESIGN.md
 
@@ -59,6 +60,7 @@
 - light、message 结构能用；particle 还没测
 - 旧蓝图导入后发光弱/不亮，但原先放着的旧建筑亮度正常（原因待测 G）
 - **2026-10-06 probe_187 放置崩溃**，原因：**我自己排版脚本的 `trans()` 盲扫所有 `[I;…]` 数组、把 `animation.rotY` 时间轴也当坐标平移了** → `[I;0,2,0,0,0,20,…]` 被改成 `[I;224,4,0,…]`，`ValueTimeline.read` 拿 `array[0]=224` 去 `getType` → `java.lang.RuntimeException: Invalid id 224`（Client thread、**放置时**、`LittleAdvancedDoor.loadFromNBTExtra:198`）。触发样品 = **E**（唯一走"整节点平移"分支的样品）；其余 8 个样品的结构文本未被平移、时间轴首元素仍为 0 ✓。同类缺陷共 3 处（`trans()` / `lt_probe187` 的包围盒 / `lt_probe_split` 的 `boxes_of`），已全部定位，修法见 HANDOFF §4☆。
+- **G 结果（2026-10-06）**：在原先放着的**旧发光小方块**旁边放置/破坏方块后，该格光照被重算并**变暗**；小方块外观仍然发光，但**不再照亮周围方块**（待用户截图确认）。
 
 ## 1.5.87 基线核对（源码只读核对，未改代码；行号取自 lt_src_187）
 | NOTES 条目 | 1.5.87 | 证据 |
@@ -87,3 +89,7 @@
 - **能自激**：输出条件 `con` 可引用自身输出 `b<n>`；`SignalInputCondition.calculateDelay()`（`:135/243/275`）保证反馈 ≥1 tick，`InternalSignalOutput.load():64-66` 用 `max(ceil(calculateDelay()), delay)` 抬高延迟 → 可做无外部触发的振荡（稳定性待游戏内实测）
 - 周期性：`SignalMode.PULSE`（delay+length）+ `SignalTicker` 调度（`SignalMode.java:152/678-736`、`SignalTicker.java:25`）
 - **1.5.87 新增红石转换方块**：`BlockSignalConverter.java:11/95`、`TESignalConverter.java:33`（pre199 完全没有红石代码）
+
+## 待验证规则（等用户截图确认）
+- 若 G 的截图确认：**FCB 发光小方块 = 只发光不照明、不漏光**（外观亮但不给周围格子提供光照）⇒ **照明一律用 `light` 结构**；`lt_ramen.py` 里的 **LEAKFIX（假灯/漏光豁免）可以退役**（不再需要"离室内 ≤2 格用同色不发光色块"那套规避）。
+- 另：1.5.87 的 `BlockTile.getLightValue` 对小方块自发光做**体积加权**（`*= getPercentVolume`），所以即使还漏光，1px 级的发光块亮度也≈1 —— 与上面的观测方向一致。
