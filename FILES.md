@@ -45,6 +45,20 @@
 | lt_root.py | **根层守卫**：根有 children 就必须有 structure（缺则插入 + 硬断言）；CLI `selftest`/`verify`/`diff` | 根层文本（库） | 无（库；CLI 只打印） | 2026-10-05（selftest 全过 + verify 全部样品） |
 | lt_tree.py | 导入文本树/语法校验器：递归解析 tiles/structure/children，查 6 分量与 **7/11 分量可变形盒**、上界排他、count、min/size（全树并集）、structure id（含 1.5.87 新增 id）、advancedDoor 的 offGrid 陷阱；**新增守卫①时间轴形态（首元素 0~3、长度 2+3*count(+hermite 3)）②axisCenter 必须落在本节点盒子包围盒内**；有问题返回 exit 1 | 蓝图 txt | 无（只打印；退出码 0/1） | 2026-10-06（12 份探针全过；2 份反例夹具必须报错 ✔） |
 
+## 交付状态（2026-10-06；门禁 = lt_root + lt_tree + lt_geom（含可变形盒时）三项全过 + 单文件 ≤1MB）
+
+| 文件 | 三项检查 | 交付判定 | 用户测试结果 |
+|---|---|---|---|
+| probe_I2.txt | ✓✓✓（1 盒，8 分量原生） | **可交付** | **没问题 ✔** |
+| scale_B.txt（609 盒） | ✓✓✓（无变形盒） | **可交付** | 开光影 ≈**20fps** / 关光影 ≈**40fps**（**比 density_test 还卡，待排查 §5**） |
+| scale_A.txt | ✓✓✓（倒角条已修） | **可交付** | 待测 |
+| probe_C/D/E2/F2/F2x10/J2 | ✓✓✓ | **可交付** | 均 ✔（E2 门灯同步、J2 不闪无声、F2 自闪可停但有 delay 延迟、F2x10 掉帧） |
+| probe_A.txt / probe_B.txt | ✓✓（无变形盒） | 可放置 | 黑色圆弧上升 / 白色水平移动（已解释，见 NOTES 21） |
+| probe_I.txt | ✓✓⚠（11 分量旧格式→警告） | **移出可交付** | — |
+| probe_H/H2/H3/H2b/H3b | H/H2/H3 ✗（越界）；H2b/H3b 几何 ✗（232 问题） | **几何反例夹具（不交付）** | H2b/H3b：鳞片歪墙、曲面没做成 |
+| probe_E.txt | ✗（时间轴 224） | **崩溃夹具（不交付）** | — |
+| probe_H4.txt / probe_H5.txt | ✗（lt_tree 解析为空） | **待修（不交付）** | — |
+| density_test.txt | ✓✓✓ | 可交付 | 开 50 / 关 100+ fps（密度 5.4 盒/格） |
 ## 说明
 - `nexus_lab.txt` / `neon_tower.txt` / `neon_city.txt` / `ramen_shop.txt` / `cyber_lab.txt` 等大蓝图**不入库**（脚本可重新生成）。
 - `lt_src/`、`cc_src/` 反编译源码与各 jar 也不入库（只读参考）。
