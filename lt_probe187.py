@@ -184,7 +184,7 @@ depth = max(p[4] for p in table)
 ROOT_T = '[{boxes:[%s],tile:{block:"minecraft:concrete:15"}}]' % ",".join(plates)
 all_txt = ROOT_T + "".join(kids_out)
 allbox = [[int(v) for v in m.split(",")][:6] for m in re.findall(r"\[I;([-\d,]+)\]", all_txt)
-          if len(m.split(",")) >= 6]
+          if len(m.split(",")) in (6, 7, 11)]     # 只认盒子，排除关键帧等 8 分量数组
 lo = [min(b[i] for b in allbox) for i in range(3)]
 hi = [max(b[i + 3] for b in allbox) for i in range(3)]
 n_root = sum(len(rs) for _, rs, _ in lt_tree.entries(ROOT_T))

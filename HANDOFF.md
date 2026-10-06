@@ -112,6 +112,31 @@
 - `LittleDoor.performInternalOutputChange`（`LittleDoor.java:176-186`）：当端口名 `"state"` 且 `opened != output.getState()[0]` 且不在运动中 → `activate(DoorActivator.SIGNAL, null, null)` ⇒ **信号写门的 state 输出即可开关门**，且 SIGNAL 路径不受 `disableRightClick` 限制 ✔
 - ⇒ 这才是"按钮控制开关门"的正解（按钮走 openDoor 只能开，见 ②）
 
+### ★★ 开关门正解（源码推导，**待 J 实测**）
+> "把门做成某个开关结构的子结构，门的 `state` 输出写 `con` 引用父的输出" —— 这样**同一个门既能被开也能被关**。
+
+```json
+根 fixed → 子0 light(level:0, enabled:{state:0})            // 开关：右键 toggle enabled
+             └ 子0 advancedDoor(disableRightClick:1b,
+                    state:{state:0, con:"p.b0", mode:"EQUAL", delay:0})
+```
+- 机制：右键面板 → `LittleLight.onBlockActivated`（`LittleLight.java:61-66`）→ `getOutput(0).toggle()` → 门的 `con` 算式 `p.b0`（`SignalTargetParent`：`structure.getParent().getStructure()` → 父的内部输出 0）重算 → 写门的 `state` 输出 → `LittleDoor.performInternalOutputChange`（`:176-186`）→ `activate(SIGNAL,…)` → **门开/关切换** ✔
+- 开关源也可以不用 light：任何有输出的结构都行（门/按钮/`signal_display_16`）；light 的好处是**右键即切换**且不占交互（`disableRightClick` 不写就是 false）
+
+**⚠ 风险注记（已查证，结论：机制成立）**：E/F/J 都依赖"某个结构的输出变化会通知整棵树重算 `con`"。源码路径：
+| 环节 | 位置 |
+|---|---|
+| 组件状态变了 | `ISignalComponent.java:20` `this.changed();` |
+| 输出变化出口 | `InternalSignalOutput.changed()`（`InternalSignalOutput.java:37-43`）→ `parent.performInternalOutputChange(this)` + `parent.schedule()` |
+| 冒泡到根 | **`LittleStructure.notifyChange()`（`LittleStructure.java:786-798`）**：有父就 `this.parent.getStructure().notifyChange(); return;`（一路上冒）；**只有根（无父）才往下走** |
+| 根上递归全树 | **`LittleStructure.processSignalChanges()`（`:800-817`）**：先跑自己的 `externalHandler.update()`（`:802-804`）、再跑自己的 `outputs[i].update()`（`:806-810`，= `InternalSignalOutput.update()` 求值 `con`）、**再递归 `child.getStructure().processSignalChanges()`（`:811-816`）** |
+| 调度器入口 | `LittleStructure.changed(ISignalComponent)`（`:839-841`）→ `schedule()`；`ISignalSchedulable.schedule()`（`:29`） |
+⇒ **"父（乃至任意节点）的输出变化最终会让全树的 `con` 被重新求值" = 成立**（不是父→子单向，而是"冒泡到根 + 根递归全树"）✔ 因此 E/F/J 的写法在机制上可行，**J 一测就能验证整条链路**。
+
+### g-2. 7/11 分量盒在 187 是"旧切片兼容格式"
+- 1.5.87 的 `LittleBox.createBox`（`:1120-1139`）对 7/11 分量的解释**沿用了旧的切片编码**（`slice id` + 4 个 float 位），返回的却是 `LittleTransformableBox`；**原生可变形盒自己的编码格式未知**（`slice id < 0` 走通用构造 `:1128-1129`，含义没读出来 ❓）
+- ⇒ **不要凭猜测手写可变形盒**：以游戏内导出为准 —— **测试项 K**（用 LT 的斜面/变形工具做一块斜面，蓝图复制导出，把该 tile 的盒子数组原样贴回来）
+
 ### f. child 事件在关门（倒放）时的行为
 - `ChildActivateEvent.run`（`:51-72`）：**只 openDoor，不 activate** ⇒ 关门过程中即使事件触发，也只是"再开一次"；若子门已在开态 → `canOpenDoor` 返回 null → 静默不动 ✔
 
@@ -127,14 +152,27 @@
 
 ---
 
-## 6. 探针测试清单（用户照着拍 2~3 张图）
+## 6. 用户操作说明（探针 + 体块 + 截图/回报清单）
 
-样品排布（从西往东，间隔 2 格，全部坐在 2px 底座上）：A 官方粒子 → B 新键粒子 → C 扇叶 → D 灯15 → E 门→灯 → F 自激 → F10 十盏 → H 曲面 → I 斜板。导入起点 (0,0,0)（把蓝图 min 角对准你站的那一格）。
+**样品排布**（`probe_187.txt`，从西往东、间隔 2 格、都坐在 2px 底座上）：A 官方粒子 → B 新键粒子 → C 扇叶 → D 灯15 → E 门→灯 → F 自激 → F10 十盏 → H 曲面（209 盒）→ I 斜板；导入起点 (0,0,0)。`probe_j.txt` 是独立的小样品（面板 → 卷帘门），导入起点 (0,0,0)。
 
-- **图1**：站在样品排**南侧**、**斜上方约 45°**，让全部样品入画（看 A/B 粒子效果、D/E 亮度、H 曲面观感）
-- **图2**：贴近 **H（和 I）2 格平视**（看曲面台阶感/倒角、斜板角度）
-- **文字回报**：C 是否还闪、还有没有放置声；E 开关两次的灯状态；F 是否自己闪、大概几秒一次、按钮能否停；F10 开启前后帧率与卡顿感
-- **G（不用蓝图）**：在一盏**原先放着的旧发光建筑**旁边放一个方块再拆掉，看它会不会变暗（验证 §4① 的体积加权光照是否也影响旧建筑）
+**a. 先在城区外导入探针**：`probe_187.txt`、`probe_j.txt` 放在 **x≈-680、z≈300** 附近（城区是 x -800~-701 / z 300~399，别放进去）。
+
+**b. 体块模型**：把 `mass_v0.schematic` 放进 `.minecraft/config/worldedit/schematics/`，游戏内 `//schem load mass_v0` → `//paste -o`；若报方块数超限先 `//limit -1`。
+⚠ **粘贴会清空 x -800~-701、z 300~399、y3~255 内的一切**（旧 v1 建筑/街道会一起被清掉，用户已同意不备份）。
+
+**c. 截图只要 3 张**：
+- **图1**：探针排**南侧**、斜上方约 45° 全景（看 A/B 粒子、D/E 亮度、H 观感、J 门）
+- **图2**：贴近 **H（和 I）平视 2 格**（看曲面台阶感/倒角、斜板角度）
+- **图3**：体块 —— 飞到 **(-830, 200, 430)** 朝**东北**俯看全城
+
+**d. 文字回报**：
+- **C**：还闪不闪？还有没有放置声？
+- **E**：开关两次的灯状态（开门亮/关门灭对不对）
+- **F**：是否自己闪？大概几秒一次？总开关（那扇小门 `/lt-open`）能不能停它？**F10**：开启前后帧率与卡顿感
+- **J**：右键面板能否把门**打开**？再按能否**关上**？（这是"开关门正解"的实测）
+- **G**（不用蓝图）：在一盏**原先放着的旧发光建筑**旁边放一个方块再拆掉，看它会不会变暗（验证 §4① 的体积加权光照是否也影响旧建筑）
+- **K**：在游戏里用 LT 的斜面/变形工具做一块斜面，用蓝图**复制导出**成文本，把该 tile 的**盒子数组原样贴回来**（§4 g-2：原生可变形盒的编码不要猜，以游戏内导出为准）
 
 ---
 
