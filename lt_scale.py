@@ -1,7 +1,7 @@
 # lt_scale.py —— 规模测试样品（用 lt_mech2 的几何接口）+ 导入上限填充文本
 #   scale_A：16×16 格舱壁地表，密度同 density_test，**面板边缘全 45° 倒角**，2 层凹凸深度 + 检修舱口凹陷
 #   scale_B：同上但**不加倒角**（对比）
-#   limit_32k/128k/512k：纯填充（棋盘 1px 点阵，按目标字节数截断），用来测 Little Importer 的单次导入上限
+#   （limit_* 上限填充已按要求取消：Little Importer 单次 ≥1MB 已实测可用，规则 = 单文件 ≤1MB、按模块拆分）
 import io, math, re
 import lt_colors, lt_mech2 as M, lt_root, lt_tree
 from lt_colors import fc
@@ -73,31 +73,6 @@ def build(out, name, bevel=True):
           % (out, len(txt.encode("utf-8")), len(rects),
              (hi[0] - lo[0]) / 16, (hi[1] - lo[1]) / 16, (hi[2] - lo[2]) / 16,
              lo[0] // 16, lo[1] // 16, lo[2] // 16))
-
-
-def filler(out, target):
-    """棋盘 1px 点阵填充，按目标字节数截断 → 用来测导入上限"""
-    boxes, n = [], 0
-    for y in range(0, 256, 2):
-        for x in range(0, 256, 2):
-            boxes.append('[{%s:[I;%d,%d,0,%d,%d,1],tile:{block:"minecraft:iron_block"}}]'
-                         % ("bBox", x, y, x + 1, y + 1))
-            n += 1
-            if n % 512 == 0:
-                tiles = "[%s]" % ",".join(boxes)
-                if len(tiles.encode("utf-8")) >= target:
-                    break
-        else:
-            continue
-        break
-    tiles = "[%s]" % ",".join(boxes)
-    rects = _rects(tiles)
-    lo = [min(r[i] for r in rects) for i in range(3)]
-    hi = [max(r[i + 3] for r in rects) for i in range(3)]
-    txt = ('{tiles:%s,structure:{id:"fixed",name:"%s"},min:[I;%d,%d,%d],size:[I;%d,%d,%d],count:%d}'
-           % (tiles, "limit", *lo, *[hi[i] - lo[i] for i in range(3)], len(rects)))
-    io.open(out, "w", encoding="utf-8").write(lt_root.fix(txt, "limit", tag=out))
-    print("%-20s 目标 %6d B → 实得 %6d B  盒子 %5d" % (out, target, len(txt.encode("utf-8")), len(rects)))
 
 
 print("== scale 规模样品（16×16 格 = 256×256 px）==")

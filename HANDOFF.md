@@ -57,11 +57,9 @@
 
 ## 3. 当前进度
 
-- **方向已换**：旧 v1 街区（主街/南排店铺）**作废**；新目标 = **天梯城**（见 `DESIGN.md` v2 + `PLAN.md` v2：100×100 范围、4~255 分层、四网一心跳、R1~R8）。
-- 拉面店：外壳完成、已实测导入；暖帘已改独立 noclip 文件（`ramen_curtain.txt`，相对店西北角偏移 `(3,2,-1)`，即拉面店导入起点 `+(4,2,1)`）。**下一步要整体改成金属舱体科技版（不保留木质外壳）。**
-- 机关：`mech_test.txt` 在 1.5.87 下"都能动"；`/lt-open` 可用；**按钮只能开不能关**（见 §4②）；门禁只挡右键。
-- 1.5.87 能力：`light`/`message` 可用，`particle` 未测；信号系统（命名端口 + 表达式连线 + PULSE + 自激）与 `BlockSignalConverter`（红石⇄信号）已就绪未用。
-- **`probe_187.txt` 已生成并通过 `lt_root`+`lt_tree`**（9980 B，242 盒，导入起点 (0,0,0)，9 样品按 2 格间隔排开）；测试清单见 §6。
+- 旧拉面店与 v1 街道已随 **mass_v0 粘贴清除**（用户同意不备份）。
+- **当前阶段 = 几何与机关基础件验证**：曲面墙 **H4/H5 待测**、**scale_B 帧率待排查**（开 20 / 关 40fps）。
+- 之后：**合成蛋白面馆设计稿**（第一栋精细建筑，用来定**中式科幻设计语言**）→ 定**全城细节密度标准** → **体块 v1**（按 DESIGN「高度感与体块 v1 方向」）。
 
 ---
 
@@ -93,7 +91,7 @@
 - **合成表**（jar 内 `assets/littletiles/recipes/particle_emitter.json`）：图案 `CDC / GRG / CCC`；C=`minecraft:concrete` data15 ×6、D=`minecraft:dispenser` ×1、R=`minecraft:redstone_block` ×1、G=`minecraft:firework_charge` ×2；`type: littletiles:crafting_shaped_premade`
 - **给物品（1.12 语法）**：`/give @p littletiles:premade 1 0 {structure:{id:"particle_emitter"}}`（物品注册名 `littletiles:premade`，`LittleTiles.java:252`；NBT 带 `structure:{id:…}`，`LittleStructurePremade.java:62-81`）❓未实测
 - **官方预制品原文**（`assets/littletiles/premade/particle_emitter.struct`）用的是**扁平旧键**；`loadSettings`（`LittleParticleEmitter.java:156-162`）确实读扁平键 `tickDelay`/`ticker`/`tickCount`/`speedY`/`spread`，但 **`color/lifetime/texture/size/gravity/growrate` 只在 `settings` 子标签里读**（`:161` `hasKey("settings") ? new ParticleSettings(…) : SMOKE 预设`）⇒ **官方 .struct 里那些键多半被忽略、实际走 SMOKE 预设**
-- **新写法键表**：`tickDelay:int, tickCount:int, ticker:int, speedX/Y/Z:float, spread:float`（+圆形扩散 `steps:int`）、`settings:{color,lifetime,lifetimeDeviation,gravity,startSize,endSize,sizeDeviation,randomColor,collision}`（`LittleParticleEmitter.java:169-178`、`:358-381`）、`facing:int`（方向字段，默认 UP=4）、输出端口 `disabled`
+- **新写法键表**：`tickDelay:int, tickCount:int, ticker:int, speedX/Y/Z:float, spread:float`（+圆形扩散 `steps:int`）、`settings:{color,lifetime,lifetimeDeviation,gravity,startSize,endSize,sizeDeviation,randomColor,collision}`（`LittleParticleEmitter.java:169-178`、`:358-381`）、`facing:int`（**默认 UP=1**；序 = DOWN0 UP1 NORTH2 SOUTH3 WEST4 EAST5）、输出端口 `disabled`
 - **g 可变形盒（1.5.87 新增）**：`LittleBox.createBox(int[])`（`:1120-1139`）——**6 分量**=普通盒；**7 分量**=`[6 坐标, slice id]`；**11 分量**=`[6 坐标, slice id, 4 个 float 位(startOne,startTwo,endOne,endTwo)]`（`Float.intBitsToFloat`）；187 里 `<0` 的 slice id 走另一套通用编码 ❓。**pre199 有同一套 7/11 编码但走切片盒**（`lt_src/LittleBox.java:1051-1060`），**没有可变形盒** ⇒ 同一文本两版解释不同。
 
 ### ☆ 2026-10-06 崩溃事件（probe_187 放置崩）与**已实施**修法
@@ -120,7 +118,7 @@
 - 目标表达式：`a<n>`=自己内部输入、`b<n>`=自己内部输出、`i<n>`/`o<n>`=外部输入/输出（指向子结构 single_input/single_output）、`c<n>.…`=下钻子、`p.…`=父（`SignalTarget.java:19-81`；`SignalUtils.java:16-72`）
 - 运算符（`SignalLogicOperator.java:13/52/91/130/164/198/232…`）：`+`=or、`V`=xor、`&`=b-and、`|`=b-or、`^`=b-xor、`#`/`-`/`*`/`/`=算术；`!`=not（`SignalInputCondition`）
 - **①按钮/doorActivator → light**：灯 `enabled:{state:0,con:"p.b0",mode:"EQUAL",delay:0}`，灯作为按钮的子结构（`p.b0` = 按钮的 `state` 输出）
-- **②门 state → light**：同上，灯作为门的子结构（门只有 `addOutput("state")`，无输入）
+- **②门 state → light**：**灯不能挂在门下，必须做控制器的兄弟节点（NOTES 17）** —— 门动画会把 children 搬进动画假世界 ⇒ 灯不亮
 - **③自引用**：`enabled:{state:0,con:"!b0",mode:"EQUAL",delay:10}`（`b0`=自己）⇒ 自激振荡；再与总开关做与：`con:"!b0&p.b0"`
 
 ### e. 门能被信号开/关吗？**能**（虽然没有命名输入）
@@ -151,9 +149,6 @@
 ### g-2. 7/11 分量盒 / 原生可变形盒
 - **原生编码已解码**：见 **NOTES 第 22 条 + `lt_tbox.py`**（`[6坐标, indicator, word…]`，bit31 标记 / bits24-29 六面 flip / bits0-23 掩码，word 里 16-bit short 打包，偏移 = 基础角 + 偏移；角序 EUN,EUS,EDN,EDS,WUN,WUS,WDN,WDS）；K 样本往返**逐位一致 ✔**。
 - **7 / 11 分量为旧格式**（`LittleSlice` 编码），`lt_tree` 只报 **`[警告]`**，不再当问题。
-- 1.5.87 的 `LittleBox.createBox`（`:1120-1139`）对 7/11 分量的解释**沿用了旧的切片编码**（`slice id` + 4 个 float 位），返回的却是 `LittleTransformableBox`；**原生可变形盒自己的编码格式未知**（`slice id < 0` 走通用构造 `:1128-1129`，含义没读出来 ❓）
-- ⇒ **不要凭猜测手写可变形盒**：以游戏内导出为准 —— **测试项 K**（用 LT 的斜面/变形工具做一块斜面，蓝图复制导出，把该 tile 的盒子数组原样贴回来）
-
 ### f. child 事件在关门（倒放）时的行为
 - `ChildActivateEvent.run`（`:51-72`）：**只 openDoor，不 activate** ⇒ 关门过程中即使事件触发，也只是"再开一次"；若子门已在开态 → `canOpenDoor` 返回 null → 静默不动 ✔
 
@@ -177,69 +172,12 @@
 已完成并归档：探针 a/e/f/g/h（E2/F2/F2x10/J2/H2b/H3b/density_test/scale_B 均已实测，结论见 NOTES 测试记录）。
 **待测**：`probe_H4` / `probe_H5`（曲面切面是否无台阶、大面材质取石英还是 FCB 中灰）、`scale_A`（倒角后的观感）——每项都记 **开/关光影两个帧率**。
 
-1. **`lt_np.py` 加接口**：把 `light` / `particle` / `signal`（命名端口、`signal` 列表、`con` 条件、`stayAnimated`、可变形盒）做成可写参数，让后续模块直接产出带机关的蓝图。
-2. **拉面店 → 金属舱体科技版**（不保留木质外壳；见 DESIGN 末行设施清单）。
-3. **按 `DESIGN.md` + `PLAN.md` v2 铺天梯城**：人造山体 + 峡谷 + 四层竖向分区；**所有可见表面 100% 小方块**（整方块只允许用于完全被包裹的实心内部和临时脚手架，见 DESIGN【精度原则】）；`mass_v0.schematic` 只是规划草图，最终全部替换。
-
-**既有硬约束**：蓝图 min 角落锚点格、体素落点 = `锚点 + floor(坐标/16)`；根有 children 必须有 structure（`lt_root` 拦）；写完必跑 `lt_tree` 到 `[问题] 无`；`Vol.export` 无损必须 True；室外离室内 ≤2 格的装饰灯用同色假灯（1.5.87 下小方块自发光基本无效，直接上 `light` 结构）。
+**既有硬约束**：蓝图 min 角落锚点格、体素落点 = `锚点 + floor(坐标/16)`；根有 children 必须有 structure（`lt_root` 拦）；写完必跑 `lt_tree` 到 `[问题] 无` +（含可变形盒时）跑 `lt_geom`；`Vol.export` 无损必须 True。
 
 ---
 
-## 6. 用户操作说明（探针 + 体块 + 截图/回报清单）
-
-**样品排布**（`probe_187.txt`，从西往东、间隔 2 格、都坐在 2px 底座上）：A 官方粒子 → B 新键粒子 → C 扇叶 → D 灯15 → E 门→灯 → F 自激 → F10 十盏 → H 曲面（209 盒）→ I 斜板；导入起点 (0,0,0)。`probe_j.txt` 是独立的小样品（面板 → 卷帘门），导入起点 (0,0,0)。
-
-**a. 导入探针（先 safe 版，再逐样品，每导入一个之前先存档）**：
-1. 先导入 **[probe_187_safe.txt](E:\work\建筑\probe_187_safe.txt)**（A/B/C/D/F/F10/H/I，**已去掉会崩的 E**；9495 B、239 盒、导入起点 (0,0,0)）
-2. 嫌疑样品**逐个**导入，**每导入一个之前先存档一次**（顺序 = 风险从低到高，见 §6 e）
-3. 全部放在城区外（城区是 x -800~-701 / z 300~399，别放进去；`probe_j.txt` 是独立小样品）
-4. ⚠ **`probe_E.txt` 是已确认必崩的样本**（`Invalid id 224`），只在"想复现崩溃"时导入
-
-**e. 单样品文件与推荐导入顺序（风险从低到高，我的建议）**：
-| # | 文件 | 内容 | 为什么排这个位置 | 导入起点(格/px) |
-|---|---|---|---|---|
-| 1 | `probe_H.txt` | 1/4 圆柱曲面（209 盒） | 纯几何，无任何结构机器，最不可能崩；同时看曲面观感 | (36,0,0) / 576px |
-| 2 | `probe_D.txt` | light level:15 | light 结构最简单（level + enabled state） | (11,0,0) / 176px |
-| 3 | `probe_C.txt` | 扇叶 + stayAnimated:1b | 时间轴合法；风险只在"轴心坐标没随样品平移"（视觉，不崩） | (6,0,0) / 96px |
-| 4 | `probe_A.txt` | 官方 particle_emitter 原文 | 探路：先确认 particle_emitter 在本环境能否放置 | (0,0,0) |
-| 5 | `probe_B.txt` | 新键名 particle_emitter | 与 A 对照（settings 子标签写法） | (3,0,0) / 48px |
-| 6 | `probe_J.txt` | light 右键 → 卷帘门 `con:"p.b0"` | 验证"信号开关门"整条链路；时间轴合法 | (0,0,0) |
-| 7 | `probe_F.txt` | 自激灯 + 总开关 | 自引用振荡，可能有卡顿/异常 | (18,0,0) / 296px |
-| 8 | `probe_F10.txt` | 10 盏自激灯 | 压测（帧率） | (22,0,0) / 360px |
-| 9 | `probe_I.txt` | 30° 斜板（11 分量盒） | 编码**未经验证**，可能崩或形状不对 | (46,0,0) / 736px |
-| 10 | `probe_E.txt` | 门 state → 灯 | ★**已确认必崩**（时间轴首元素 224），只用于复现 | (14,0,0) / 224px |
-
-> 与你给的顺序（D→H→C→E→J→B→A→F→F10→I）差别：我把 **E 挪到最后**（已确认必崩，放前面只是白挨一次崩溃），并把 H 放第 1 位（纯几何最保险）。其余相对次序照你的来。
-
-**f. 精度压力样品 `density_test.txt`（6 格宽 × 8 格高 × 2.25 格厚的金属舱壁）**：
-2. **再退到 10 格外看一次**：整体观感会不会"糊"、远看是否有起伏层次
-3. **两次都记 F3 帧率**（并留意是否卡顿）
-4. 参考数据（脚本实测）：**263 个盒子 / 占用 144 个方块格 / 表面 6×8=48 格上 259 个盒子 ≈ 每表面格 5.4 个盒子**；用途 = 按这个密度估算全城规模可行性
-
-**g. 测试项 K 的操作步骤（测 187 原生可变形盒编码）**：
-1. 手持 **Little Chisel（小方块凿子）**，切到 **slice（切片）模式**
-2. 在任意方块/小方块面上**放一块斜面**（切出斜切面）
-3. 用 LT 的**蓝图/复制工具**把该结构**导出成文本**
-4. 把该 tile 的**盒子数组原样贴回来**（形如 `[I;…]`，注意看是 6 / 7 / 11 个分量、`slice` 值、以及尾部那几个 int）
-   ⇒ 有了它就能确定 187 原生可变形盒的真实编码，再决定 `probe_I`（30° 斜板）怎么写
-   **（已解决 2026-10-06：K 已解码并手算验证 —— 见 NOTES 第 22 条 + `lt_tbox.py`；8 分量 = `[6坐标, indicator, word…]`，bit31 标记 / bits24-29 六面 flip / bits0-23 = 哪个角哪个轴存了偏移，word 里 16-bit short 打包，偏移 = 基础角 + 偏移；角序 EUN,EUS,EDN,EDS,WUN,WUS,WDN,WDS）**
-
-**h. 按 2a 结论重做的新探针（2026-10-06，各一份独立文件，导入起点都在 (0,0,0)）**：
-> 机制：**门动画会把它的 children 一起搬进动画假世界**（`LittleDoorBase.java:222-223` + `StructureChildToSubWorldConnection`）⇒ 灯**不能**当门的子结构，否则一开门灯就完全不亮（E/F/F10 实测就是这个）。
-1. **`probe_E2.txt`**（1024 B，12 盒）：根 fixed → **控制器 light(level:0)** → 子0 卷帘门(offY 上升 2 格, `state.con:"p.b0"`)、子1 灯(level:15, `con:"p.b0"`)＝**互为兄弟** ⇒ 右键控制器：门开关 + 灯跟随亮灭，且门动时灯不灭
-2. **`probe_F2.txt`**（560 B，4 盒）：控制器 → 1 盏自激灯 `con:"!b0&p.b0"` delay 10 ⇒ 右键控制器=总开关；开着时灯应自闪、关掉即停
-3. **`probe_F2x10.txt`**（2024 B，13 盒）：同上 ×10 盏（看帧率）
-4. **`probe_J2.txt`**（884 B，11 盒）：J 的 `stayAnimated:1b` 版（控制器 + offY 门，门禁右键仍在）⇒ 预期**不再闪、无放置声**
-5. **`probe_H2.txt` / `probe_H3.txt`**（各 16 盒）：1/4 圆柱墙 R=8 格、高 4 格、壳厚 2px，**16 个原生可变形盒切面（无台阶）**；H2 石英、H3 纯色 FCB 灰（判断条纹是不是贴图拼缝）⇒ 贴近 + 10 格外各看一次，都不该再有台阶感；H2/H3 对比可确认条纹来源
-6. **`probe_H2b.txt` / `probe_H3b.txt`**（各 **64 盒** = 16 切面 × 4 段，每段 1 格高）：**只用向内偏移**的版本 —— H2/H3 里有 `+1/-1/-8` 等**向外**偏移，而 `setBounds(:1596-1623)` 会把包围盒夹回 AABB ⇒ 面与记账/切分/碰撞不一致（`lt_tree` 已把它标成 `[问题]`）。**优先看 H2b/H3b**；H2/H3 保留作对照
-7. 新规则（已入 NOTES 第 25 条）：**可变形盒角偏移只写"向内或 0"**；跨格时按格拆段（H2b/H3b 已按 1 格高拆 4 段）
-
-**i. 规模样品与导入上限（2026-10-06）**
-- `scale_A.txt`（**带 45° 倒角**，18533 B / 609 盒 / 16.0×16.0×0.2 格）、`scale_B.txt`（**不带倒角**，13855 B / 609 盒）：16×16 格舱壁地表，密度同 density_test，含 2 层凹凸 + 检修舱口凹陷 + 铆钉 + 格栅。贴近与 10 格外各看一次，比 A/B 的倒角观感差异
-- `limit_32k.txt` / `limit_128k.txt` / `limit_512k.txt`（32926 / 134264 / 544217 B，512 / 2048 / 8192 盒）：**用来实测 Little Importer 的单次导入上限**（上限未知），逐个导入看从哪份开始失败/报错
-- ⚠ **本轮的已知缺陷（下一轮优先修）**：`scale_A` / `mech2_H2b` / 三份 `limit_*` **过不了 lt_tree** —— 两种症状：①`scale_A` 的 `count` 定义与 lt_tree 不一致（657 vs 609）；②其余几份 lt_tree 解析为空后自己抛 `min() arg is an empty sequence`（`lt_tree.py:241`）。样品本身用 `lt_root` 是过的，**导入前请先看这里的说明**；`mech2_*`（E2/F2/J2/H2b）与 `probe_*` 的对比已确认**结构等价 ✔**
-- `lt_mech2.py` 自测结果：`mech2_E2/F2/J2/H2b` 与 `probe_E2/F2/J2/H2b` **盒子集合 + structure 键值全部一致 ✔**（新接口可用）
-- 另：**光影开关对比帧率**——在 density_test / scale_A 前各测一次 F3（开/关光影）
+## 6. 已完成测试归档
+探针导入说明（`probe_187_safe` / 风险顺序表 / `density_test` / K 操作步骤 / 各样品回报项）**全部已完成，见 NOTES 测试记录**；`limit_*` 上限填充已取消（Little Importer ≥1MB 实测可用）。
 
 **b. 体块模型**：把 `mass_v0.schematic` 放进 `.minecraft/config/worldedit/schematics/`，游戏内 `//schem load mass_v0` → `//paste -o`；若报方块数超限先 `//limit -1`。
 ⚠ **粘贴会清空 x -800~-701、z 300~399、y3~255 内的一切**（旧 v1 建筑/街道会一起被清掉，用户已同意不备份）。
