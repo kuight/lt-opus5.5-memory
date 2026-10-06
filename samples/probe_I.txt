@@ -1,0 +1,1 @@
+{tiles:[{boxes:[[I;736,0,0,784,2,48]],tile:{block:"minecraft:concrete:15"}}],structure:{id:"fixed",name:"probe_I"},children:[{tiles:[{bBox:[I;736,2,0,784,4,48,24,0,0,1111490560,1105048535],tile:{block:"minecraft:quartz_block"}}],structure:{id:"fixed",name:"探针I_斜板"}}],min:[I;736,0,0],size:[I;48,4,48],count:1}

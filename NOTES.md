@@ -57,6 +57,7 @@
 - 导入后发光变弱或不亮（待查）；新版光照渲染变了，用户觉得更有科幻感
 - light、message 结构能用；particle 还没测
 - 旧蓝图导入后发光弱/不亮，但原先放着的旧建筑亮度正常（原因待测 G）
+- **2026-10-06 probe_187 放置崩溃**，原因：**我自己排版脚本的 `trans()` 盲扫所有 `[I;…]` 数组、把 `animation.rotY` 时间轴也当坐标平移了** → `[I;0,2,0,0,0,20,…]` 被改成 `[I;224,4,0,…]`，`ValueTimeline.read` 拿 `array[0]=224` 去 `getType` → `java.lang.RuntimeException: Invalid id 224`（Client thread、**放置时**、`LittleAdvancedDoor.loadFromNBTExtra:198`）。触发样品 = **E**（唯一走"整节点平移"分支的样品）；其余 8 个样品的结构文本未被平移、时间轴首元素仍为 0 ✓。同类缺陷共 3 处（`trans()` / `lt_probe187` 的包围盒 / `lt_probe_split` 的 `boxes_of`），已全部定位，修法见 HANDOFF §4☆。
 
 ## 1.5.87 基线核对（源码只读核对，未改代码；行号取自 lt_src_187）
 | NOTES 条目 | 1.5.87 | 证据 |

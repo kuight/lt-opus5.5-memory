@@ -1,0 +1,1 @@
+{tiles:[{boxes:[[I;176,0,0,192,2,16]],tile:{block:"minecraft:concrete:15"}}],structure:{id:"fixed",name:"probe_D"},children:[{tiles:[{bBox:[I;176,2,0,192,18,16],tile:{block:"minecraft:quartz_block"}}],structure:{id:"light",level:15,disableRightClick:0b,enabled:{state:1}}}],min:[I;176,0,0],size:[I;16,18,16],count:1}

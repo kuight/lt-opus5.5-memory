@@ -96,6 +96,18 @@
 - **新写法键表**：`tickDelay:int, tickCount:int, ticker:int, speedX/Y/Z:float, spread:float`（+圆形扩散 `steps:int`）、`settings:{color,lifetime,lifetimeDeviation,gravity,startSize,endSize,sizeDeviation,randomColor,collision}`（`LittleParticleEmitter.java:169-178`、`:358-381`）、`facing:int`（方向字段，默认 UP=4）、输出端口 `disabled`
 - **g 可变形盒（1.5.87 新增）**：`LittleBox.createBox(int[])`（`:1120-1139`）——**6 分量**=普通盒；**7 分量**=`[6 坐标, slice id]`；**11 分量**=`[6 坐标, slice id, 4 个 float 位(startOne,startTwo,endOne,endTwo)]`（`Float.intBitsToFloat`）；187 里 `<0` 的 slice id 走另一套通用编码 ❓。**pre199 有同一套 7/11 编码但走切片盒**（`lt_src/LittleBox.java:1051-1060`），**没有可变形盒** ⇒ 同一文本两版解释不同。
 
+### ☆ 2026-10-06 崩溃事件（probe_187 放置崩）与**待批准**修法
+
+- **异常**：`java.lang.RuntimeException: Invalid id 224` @ `ValueTimeline.getType(ValueTimeline.java:24-28)`；线程 = **Client thread**；时机 = **放置（导入）时**：`Placement.placeTiles(:219)` → `PlacementBlock.place(:516)` → `TileEntityLittleTiles.updateTilesSecretly(:282)` → `PlacementStructurePreview.place(:617)` → `StructureTileList.setStructureNBT(:118)` → `create(:232)` → `LittleStructure.loadFromNBT(:579)` → **`LittleAdvancedDoor.loadFromNBTExtra(:198)`**
+- **触发样品 = E**（唯一走"整节点平移"分支的样品）；证据：文件里只有 E 的 `animation.rotY` 首元素是 224（`[224, 4, 0, …]`），其余 8 个样品的结构文本没被平移、时间轴首元素都是 0
+- **根因（我的工具 bug，不是 LT 的问题）**：排版用的 `trans()` **盲扫所有 `[I;…]`**，把 `animation` 里的时间轴也按坐标加了偏移 → `[I;0,2,0,0,0,20,…]` → `[I;224,4,0,224,2,20,…]` → `getType(224)` 抛错
+- `ValueTimeline.read` 格式（`ValueTimeline.java:39-54`）：`[type(0~3), count, (tick, hi32, lo32)×count] + additional`（Linear 附加 0 个、Hermite 3 个）；`getType` 在 `id < -1 || id >= types.size()` 时抛 `Invalid id`
+- **修法方案（三选一，等批准；本轮按要求只报方案、未改样品）**：
+  - **A（最稳）**：探针不再"整节点平移"，改为每个样品一开始就在自己的最终坐标里生成（`Vol` 的 offset 或生成前带上 x 偏移），彻底不需要 `trans()`
+  - **B（最小改动）**：`trans()` 只平移**盒子位置**的数组（`bBox:` / `boxes:` 内），`axisCenter` 按需单独处理，**时间轴一律不碰**
+  - **C（兜底守卫）**：给 `lt_tree.py` 加一条检查——非盒子 int 数组若形如时间轴（长度 = `2+3*count` 或 `+3`），要求 `a[0] ∈ {0,1,2,3}` 且长度自洽；本次这种错误在"生成后立刻"就会被拦住
+- 同一根因的另外两处（均已定位）：`lt_probe187.py` 的包围盒统计、`lt_probe_split.py` 的 `boxes_of()`（**后者已修**：只在 `bBox:`/`boxes:` 位置取数组）
+
 ### ★ 附属评估
 - **ALET（A Little Extra Tiles）候选**：见 §7 结论（本轮已评估）。
 - **Little Opener 不再需要**：`/lt-open`（命令方块可跑）+ 1.5.87 信号系统已覆盖"远程开关门"的需求，不引入额外前置。
@@ -156,7 +168,27 @@
 
 **样品排布**（`probe_187.txt`，从西往东、间隔 2 格、都坐在 2px 底座上）：A 官方粒子 → B 新键粒子 → C 扇叶 → D 灯15 → E 门→灯 → F 自激 → F10 十盏 → H 曲面（209 盒）→ I 斜板；导入起点 (0,0,0)。`probe_j.txt` 是独立的小样品（面板 → 卷帘门），导入起点 (0,0,0)。
 
-**a. 先在城区外导入探针**：`probe_187.txt`、`probe_j.txt` 放在 **x≈-680、z≈300** 附近（城区是 x -800~-701 / z 300~399，别放进去）。
+**a. 导入探针（先 safe 版，再逐样品，每导入一个之前先存档）**：
+1. 先导入 **[probe_187_safe.txt](E:\work\建筑\probe_187_safe.txt)**（A/B/C/D/F/F10/H/I，**已去掉会崩的 E**；9495 B、239 盒、导入起点 (0,0,0)）
+2. 嫌疑样品**逐个**导入，**每导入一个之前先存档一次**（顺序 = 风险从低到高，见 §6 e）
+3. 全部放在城区外（城区是 x -800~-701 / z 300~399，别放进去；`probe_j.txt` 是独立小样品）
+4. ⚠ **`probe_E.txt` 是已确认必崩的样本**（`Invalid id 224`），只在"想复现崩溃"时导入
+
+**e. 单样品文件与推荐导入顺序（风险从低到高，我的建议）**：
+| # | 文件 | 内容 | 为什么排这个位置 | 导入起点(格/px) |
+|---|---|---|---|---|
+| 1 | `probe_H.txt` | 1/4 圆柱曲面（209 盒） | 纯几何，无任何结构机器，最不可能崩；同时看曲面观感 | (36,0,0) / 576px |
+| 2 | `probe_D.txt` | light level:15 | light 结构最简单（level + enabled state） | (11,0,0) / 176px |
+| 3 | `probe_C.txt` | 扇叶 + stayAnimated:1b | 时间轴合法；风险只在"轴心坐标没随样品平移"（视觉，不崩） | (6,0,0) / 96px |
+| 4 | `probe_A.txt` | 官方 particle_emitter 原文 | 探路：先确认 particle_emitter 在本环境能否放置 | (0,0,0) |
+| 5 | `probe_B.txt` | 新键名 particle_emitter | 与 A 对照（settings 子标签写法） | (3,0,0) / 48px |
+| 6 | `probe_J.txt` | light 右键 → 卷帘门 `con:"p.b0"` | 验证"信号开关门"整条链路；时间轴合法 | (0,0,0) |
+| 7 | `probe_F.txt` | 自激灯 + 总开关 | 自引用振荡，可能有卡顿/异常 | (18,0,0) / 296px |
+| 8 | `probe_F10.txt` | 10 盏自激灯 | 压测（帧率） | (22,0,0) / 360px |
+| 9 | `probe_I.txt` | 30° 斜板（11 分量盒） | 编码**未经验证**，可能崩或形状不对 | (46,0,0) / 736px |
+| 10 | `probe_E.txt` | 门 state → 灯 | ★**已确认必崩**（时间轴首元素 224），只用于复现 | (14,0,0) / 224px |
+
+> 与你给的顺序（D→H→C→E→J→B→A→F→F10→I）差别：我把 **E 挪到最后**（已确认必崩，放前面只是白挨一次崩溃），并把 H 放第 1 位（纯几何最保险）。其余相对次序照你的来。
 
 **b. 体块模型**：把 `mass_v0.schematic` 放进 `.minecraft/config/worldedit/schematics/`，游戏内 `//schem load mass_v0` → `//paste -o`；若报方块数超限先 `//limit -1`。
 ⚠ **粘贴会清空 x -800~-701、z 300~399、y3~255 内的一切**（旧 v1 建筑/街道会一起被清掉，用户已同意不备份）。
