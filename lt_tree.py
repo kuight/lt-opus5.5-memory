@@ -155,6 +155,18 @@ def walk(s, i, depth, path, rep, st):
                                % ("  " * depth, r[:6], len(dd["offsets"]),
                                   ", ".join("%s.%s%+d" % (o["corner"], o["axis"], o["offset"]) for o in dd["offsets"]),
                                   dd["flips"] or "无"))
+                    # ★ 角越出声明 AABB 检查（setBounds 会把几何包围盒夹回 AABB ⇒ 越界会让真实面与记账不一致）
+                    CS = {"EUN": (1, 1, 0), "EUS": (1, 1, 1), "EDN": (1, 0, 0), "EDS": (1, 0, 1),
+                          "WUN": (0, 1, 0), "WUS": (0, 1, 1), "WDN": (0, 0, 0), "WDS": (0, 0, 1)}
+                    for o in dd["offsets"]:
+                        ex, ey, ez = CS[o["corner"]]
+                        k = "XYZ".index(o["axis"])
+                        pos = ex if k == 0 else (ey if k == 1 else ez)
+                        if (o["offset"] > 0 and pos) or (o["offset"] < 0 and not pos):
+                            st["issues"].append(
+                                "%s 可变形盒角 %s 的 %s 偏移 %+d 超出声明的 AABB"
+                                "（setBounds 会把包围盒夹回 ⇒ 面与记账不一致）: %s"
+                                % (path, o["corner"], o["axis"], o["offset"], r))
                 except Exception as ex:
                     st["issues"].append("%s 可变形盒解析失败: %s" % (path, ex))
             elif len(r) in (7, 11):

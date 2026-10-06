@@ -39,6 +39,7 @@
 | lt_tbox.py | **187 原生可变形盒编解码**（`LittleTransformableBox`）：`decode/encode`、K 样本往返逐位一致；位布局见 NOTES 第 22 条 | `[I;…]` 数组 | 无（库 + CLI `decode`） | 2026-10-06（K 往返 True ✔） |
 | lt_probe2.py | 按"门会把 children 搬进动画"结论重做的探针：控制器 light(level:0) 下**并列**放门与灯 ⇒ probe_E2 / F2 / F2x10 / J2 | 无（自建体素） | probe_E2/F2/F2x10/J2.txt | 2026-10-06（4 份 lt_root ✓ + lt_tree ✓） |
 | lt_h23.py | 用原生可变形盒做**无台阶**的 1/4 圆柱墙（16 个多边形切面）：H2 石英 / H3 FCB 灰 | lt_tbox | probe_H2.txt、probe_H3.txt | 2026-10-06（各 16 盒，lt_root ✓ + lt_tree ✓） |
+| lt_h23b.py | H2b/H3b：**只向内偏移** + 每切面按格高拆 4 段的可变形盒圆柱墙（规避 `setBounds` 夹回 AABB 的风险） | lt_tbox | probe_H2b.txt、probe_H3b.txt | 2026-10-06（各 64 盒，lt_root ✓ + lt_tree ✓） |
 | lt_root.py | **根层守卫**：根有 children 就必须有 structure（缺则插入 + 硬断言）；CLI `selftest`/`verify`/`diff` | 根层文本（库） | 无（库；CLI 只打印） | 2026-10-05（selftest 全过 + verify 全部样品） |
 | lt_tree.py | 导入文本树/语法校验器：递归解析 tiles/structure/children，查 6 分量与 **7/11 分量可变形盒**、上界排他、count、min/size（全树并集）、structure id（含 1.5.87 新增 id）、advancedDoor 的 offGrid 陷阱；**新增守卫①时间轴形态（首元素 0~3、长度 2+3*count(+hermite 3)）②axisCenter 必须落在本节点盒子包围盒内**；有问题返回 exit 1 | 蓝图 txt | 无（只打印；退出码 0/1） | 2026-10-06（12 份探针全过；2 份反例夹具必须报错 ✔） |
 
