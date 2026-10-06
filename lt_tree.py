@@ -138,12 +138,31 @@ def walk(s, i, depth, path, rep, st):
     for blk, rs, keys in els:
         for r in rs:
             st["acc"].append(r[:6])
-            if len(r) not in (6, 7, 11):
-                st["issues"].append("%s 盒分量数 %d 非法（只接受 6 / 7=6+slice / 11=6+slice+4float）: %s" % (path, len(r), r))
-            elif len(r) == 6 and not (r[0] < r[3] and r[1] < r[4] and r[2] < r[5]):
-                st["issues"].append("%s 盒上界非排他: %s" % (path, r))
-            elif len(r) > 6:
-                rep.append("%s可变形盒: 6坐标%s slice=%d 附加=%s" % ("  " * depth, r[:6], r[6], r[7:]))
+            if len(r) == 6:
+                if not (r[0] < r[3] and r[1] < r[4] and r[2] < r[5]):
+                    st["issues"].append("%s 盒上界非排他: %s" % (path, r))
+            elif len(r) >= 7 and r[6] < 0:
+                # 187 **原生可变形盒**（8 分量起；见 lt_tbox.py 的位级解码）
+                try:
+                    import lt_tbox
+                    dd = lt_tbox.decode(r)
+                    if not dd["marker"]:
+                        st["issues"].append("%s 可变形盒缺 bit31 标记: %s" % (path, r))
+                    for o in dd["offsets"]:
+                        if abs(o["offset"]) > 512:
+                            st["issues"].append("%s 可变形盒角偏移异常(>512px): %s" % (path, o))
+                    rep.append("%s可变形盒(原生 8+ 分量): 6坐标%s；%d 个角偏移 [%s]；面翻转=%s"
+                               % ("  " * depth, r[:6], len(dd["offsets"]),
+                                  ", ".join("%s.%s%+d" % (o["corner"], o["axis"], o["offset"]) for o in dd["offsets"]),
+                                  dd["flips"] or "无"))
+                except Exception as ex:
+                    st["issues"].append("%s 可变形盒解析失败: %s" % (path, ex))
+            elif len(r) in (7, 11):
+                rep.append("%s★警告：%d 分量“手写切片盒”（旧 LittleSlice 编码，非原生可变形盒）6坐标%s slice=%d 附加=%s"
+                           % ("  " * depth, len(r), r[:6], r[6], r[7:]))
+                st["warns"].append("%s %d 分量手写切片盒（旧编码，建议改用 8 分量原生盒）: %s" % (path, len(r), r))
+            else:
+                st["issues"].append("%s 盒分量数 %d 非法: %s" % (path, len(r), r))
             if not blk or blk == "?":
                 st["issues"].append("%s 有条目缺 tile.block" % path)
 
@@ -200,7 +219,7 @@ def walk(s, i, depth, path, rep, st):
 
 def report(fn):
     s = io.open(fn, encoding="utf-8").read()
-    rep, st = [], {"acc": [], "issues": []}
+    rep, st = [], {"acc": [], "issues": [], "warns": []}
     try:
         walk(s, 0, 0, "根", rep, st)
     except Exception as ex:
@@ -223,6 +242,8 @@ def report(fn):
             print("   [问题] " + x)
     else:
         print("   [问题] 无")
+    for x in st.get("warns", []):
+        print("   [警告] " + x)
     for line in rep:
         print("   " + line)
     return 1 if st["issues"] else 0

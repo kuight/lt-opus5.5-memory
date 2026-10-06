@@ -58,6 +58,13 @@
 - loop_fan：开 0→360 顺时针，关时倒放成逆时针；回到原位时闪一下并有放置方块的声音
 - 导入后发光变弱或不亮（待查）；新版光照渲染变了，用户觉得更有科幻感
 - light、message 结构能用；particle 还没测
+- **2026-10-06 用户实测第二批（原话）**：
+  - H：仍有台阶感，离远了条纹更怪
+  - D：周围亮，亮度 15 ✔
+  - C（stayAnimated:1b）：不闪、无声 ✔
+  - A：黑色粒子，圆弧形上升；B：白色粒子，水平移动
+  - J：右键开、再按关 ✔，但仍闪且有放置声
+  - E、F、F10：灯完全不亮，F10 帧率无变化
 - 旧蓝图导入后发光弱/不亮，但原先放着的旧建筑亮度正常（原因待测 G）
 - **2026-10-06 probe_187 放置崩溃**，原因：**我自己排版脚本的 `trans()` 盲扫所有 `[I;…]` 数组、把 `animation.rotY` 时间轴也当坐标平移了** → `[I;0,2,0,0,0,20,…]` 被改成 `[I;224,4,0,…]`，`ValueTimeline.read` 拿 `array[0]=224` 去 `getType` → `java.lang.RuntimeException: Invalid id 224`（Client thread、**放置时**、`LittleAdvancedDoor.loadFromNBTExtra:198`）。触发样品 = **E**（唯一走"整节点平移"分支的样品）；其余 8 个样品的结构文本未被平移、时间轴首元素仍为 0 ✓。同类缺陷共 3 处（`trans()` / `lt_probe187` 的包围盒 / `lt_probe_split` 的 `boxes_of`），已全部定位，修法见 HANDOFF §4☆。
 - **G 结果（2026-10-06）**：在原先放着的**旧发光小方块**旁边放置/破坏方块后，该格光照被重算并**变暗**；小方块外观仍然发光，但**不再照亮周围方块**（待用户截图确认）。
@@ -89,6 +96,13 @@
 - **能自激**：输出条件 `con` 可引用自身输出 `b<n>`；`SignalInputCondition.calculateDelay()`（`:135/243/275`）保证反馈 ≥1 tick，`InternalSignalOutput.load():64-66` 用 `max(ceil(calculateDelay()), delay)` 抬高延迟 → 可做无外部触发的振荡（稳定性待游戏内实测）
 - 周期性：`SignalMode.PULSE`（delay+length）+ `SignalTicker` 调度（`SignalMode.java:152/678-736`、`SignalTicker.java:25`）
 - **1.5.87 新增红石转换方块**：`BlockSignalConverter.java:11/95`、`TESignalConverter.java:33`（pre199 完全没有红石代码）
+
+17. **门动画会把它的 children 一起搬进动画实体**：`LittleDoorBase.java:222-223`（`new EntityAnimation(...)` 之后 `newDoor.transferChildrenToAnimation(animation)`），子连接被换成 `StructureChildToSubWorldConnection`（`StructureChildToSubWorldConnection.java:19-46`：世界取 `animation.fakeWorld`、`isLinkToAnotherWorld()=true`）；门的 tiles 也放进 `SubWorld.createFakeWorld`（`:253-259`）并从原 TE `remove()`（`:265-270`）。⇒ **"门为父、灯为子" ⇒ 灯被搬走 ⇒ 世界里完全不亮**（E/F/F10 实测"灯完全不亮"的根因）。反过来 **"灯/控制器为父、门为子" 则灯留在世界**（J 能联动成功）。
+18. **C（stayAnimated:1b）实测不闪、无声** ✔ ⇒ 旋转/位移门用 `stayAnimated:1b` 可消除"回到方块"那一下闪烁与放置声（`DoorController.java:146-150` 的 `place()`）。
+19. `/lt-open` 走 **`DoorActivator.COMMAND`**（`OpenCommand.java:82`）→ `LittleDoor.activate`（`:95` 翻转 `opened`；`:96-98` **非 SIGNAL** 时 `getOutput(0).toggle()`）⇒ `getOutput(0)` 就是 `state`，**会被 toggle**（SIGNAL 触发时不 toggle，避免自激）。
+20. **信号可以写兄弟节点**：`SignalTarget.parseTarget` 是递归的（`:61-67` 处理 `c<n>.`、`:68-73` 处理 `p.`）⇒ `p.c1.b0` 合法（= 父结构第 1 个子节点的内部输出 0）。
+21. **particle_emitter 的速度在 facing 局部系里**：`LittleParticleEmitter.java:111-138`（`speed = spread.generate()`，再按 facing 旋转 pos/speed；`:145-148` 在动画世界里还会转到世界系）。`EnumFacing` 序 = DOWN,UP,NORTH,SOUTH,WEST,EAST ⇒ **`facing:4` 是 WEST**，想竖直上升要 **`facing:1`(UP)**。解释实测：A 的扁平键被忽略 → 走 **SMOKE 预设**（黑 + 环形扩散 = 黑色圆弧上升）；B 的 `settings` 生效（`color:-1` = 白），但 facing=WEST 把 +Y 转成水平 ⇒ 白色水平移动。
+22. **K 解码（187 原生可变形盒）**：数组 = `[x1,y1,z1,x2,y2,z2, indicator, word…]`。`indicator`：bit31 = 可变形标记（所以 `LittleBox.createBox:1127-1129` 用 `array[6] < 0` 判分支）；bits24-29 = 六面 `flipped`（`LittleTransformableBox.java:228-244`）；**bits0-23 = `bit(i*3+a)` 标记"角 i 的轴 a 存了偏移"**（`:274-285`）。`word`：每 2 个 16-bit 有符号 short 打包进一个 int（偶索引取高 16、奇索引取低 16，`:251-263`）；偏移含义 = 该角该轴坐标 = **基础角坐标 + 偏移**（`:860`）。角序 = `EUN,EUS,EDN,EDS,WUN,WUS,WDN,WDS`（`cc_src/com/creativemd/creativecore/common/utils/math/box/BoxUtils.java:221-229`）。K 样本 `[2,0,0,14,7,11,-2147418096,-393223]` ⇒ indicator `0x80010010`（bit4=(角1,Y)、bit16=(角5,Y)）+ word `0xFFF9FFF9`（高/低 16 都是 −7）⇒ **角 EUS 与 WUS 的 Y 各 −7px**。工具：`lt_tbox.py`（decode/encode，**对 K 往返逐位一致 ✔**）。
 
 ## 待验证规则（等用户截图确认）
 - 若 G 的截图确认：**FCB 发光小方块 = 只发光不照明、不漏光**（外观亮但不给周围格子提供光照）⇒ **照明一律用 `light` 结构**；`lt_ramen.py` 里的 **LEAKFIX（假灯/漏光豁免）可以退役**（不再需要"离室内 ≤2 格用同色不发光色块"那套规避）。
