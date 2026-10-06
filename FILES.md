@@ -33,6 +33,7 @@
 | lt_loop.py | 自转扇叶样品：4 叶 + 青色发光轴，advancedDoor rotY 0→360（linear, 40 tick） | 无（自建体素） | loop_fan.txt | 2026-10-05（无损 True + lt_tree [问题] 无；线性关键帧编码有源码自检断言） |
 | lt_probe_j.py | 样品 J：light(level:0) 当开关 → 其子结构卷帘门被"信号"开/关（门的 `state` 输出 `con:"p.b0"` 跟父的 enabled） | 无（自建体素） | probe_j.txt | 2026-10-06（lt_root 断言通过 + lt_tree [问题] 无；851 B / 11 盒 / 导入起点 (0,0,0)） |
 | lt_mass.py | 天梯城体块模型 v0：地形（两山 + 斜穿峡谷 + 台地量化）、天梯（平台/三主塔/环梁/缆束/对接环/发射塔）、4 座穿楼塔、5 条线路（磁浮/连廊/索道/能网/光瀑）；手写 gzip+NBT 出 schematic，自带回读自检 + 俯视高度图 + 对角剖面 + ASCII 高度图 | 无（纯计算） | mass_v0.schematic、mass_v0_top.png、mass_v0_sec.png | 2026-10-06（自检：尺寸一致 ✓ 字节级回读一致 ✓ 非空气 499623 块） |
+| lt_verify_schem.py | **独立**校验 .schematic：gzip 魔数、解压后前 12 字节必须 `0A 00 09 "Schematic"`、根标签名、根下全部键与类型、关键键类型/长度、文件是否被完整消费（自带另一套极简 NBT 读取器，**不复用 lt_mass.py 的代码**） | schematic 文件 | 无（只打印） | 2026-10-06（mass_v0.schematic：所有检查通过 ✓，verify_exit=0） |
 | lt_root.py | **根层守卫**：根有 children 就必须有 structure（缺则插入 + 硬断言）；CLI `selftest`/`verify`/`diff` | 根层文本（库） | 无（库；CLI 只打印） | 2026-10-05（selftest 全过 + verify 全部样品） |
 | lt_tree.py | 导入文本树/语法校验器：递归解析 tiles/structure/children，查 6 分量与 **7/11 分量可变形盒**、上界排他、count、min/size（全树并集）、structure id（含 1.5.87 新增 id）、advancedDoor 的 offGrid 陷阱 | 蓝图 txt | 无（只打印） | 2026-10-05（校验 mech_test + mech_v1~v5 + loop_fan + ramen_curtain + street_0..3 + probe_187，全部 [问题] 无） |
 

@@ -219,7 +219,7 @@ body = (tag_short("Width", W) + tag_short("Height", HGT) + tag_short("Length", L
         tag_empty_list("Entities") + tag_empty_list("TileEntities") +
         tag_int("WEOriginX", -800) + tag_int("WEOriginY", Y0) + tag_int("WEOriginZ", 300) +
         tag_int("WEOffsetX", 0) + tag_int("WEOffsetY", 0) + tag_int("WEOffsetZ", 0))
-nbt = b"\x0a" + nbt_str("") + body + b"\x00"
+nbt = b"\x0a" + nbt_str("Schematic") + body + b"\x00"   # ★ WE 要求根 TAG_Compound 名字必须是 "Schematic"
 with gzip.open("mass_v0.schematic", "wb") as f:
     f.write(nbt)
 
