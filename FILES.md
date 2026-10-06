@@ -22,15 +22,20 @@
 | lt_nexus.py | NEXUS 实验室大蓝图，含 3 个子结构（滑门 + 2 椅） | lab_door.txt、office_chair.txt | nexus_lab.txt | 2026-10-05（仅 py_compile + 守卫形状回归；未整跑） |
 | lt_neon.py | 霓虹塔（GREEBLE 自适应） | 无（自建体素） | neon_tower.txt | 未验证 |
 | lt_city.py | 霓虹街区（MIRROR=True 镜像） | 无（自建体素） | neon_city.txt | 未验证 |
-| lt_ramen.py | 一番拉面店外壳与门面（唯一带真机通行检查：0.6×1.8 玩家盒） | 无（numpy/PIL 自建） | ramen_shop.txt | 2026-10-05（仅 py_compile + 守卫形状回归；未整跑。根无 children，守卫为预留） |
+| lt_ramen.py | 一番拉面店外壳与门面（唯一带真机通行检查：0.6×1.8 玩家盒）；含漏光假灯 LEAKFIX + 根层守卫 | 无（numpy/PIL 自建） | **ramen_shop.txt、ramen_curtain.txt**（暖帘独立 noclip 结构） | 2026-10-05（重跑：通行检查全通过 / 无损 True / 暖帘偏移 (4,2,1)） |
 | lt_ramen_shell.py | 拉面店外壳的 /fill 指令（自带 BFS 通行检查） | 无 | ramen_shell.txt | 未验证 |
 | lt_mech.py | 机关测试台：卷帘门+按钮 / 吧台翻板 / 冰柜门 / 穿透暖帘 | 无（自建体素） | mech_test.txt | 2026-10-05（重跑 + 根层逐字节比对一致） |
 | lt_mech_v.py | 机关对照样品 v1~v3（门可右键无按钮 / 有按钮 / 门禁右键） | 无（自建体素） | mech_v1_门可右键_无按钮.txt、mech_v2_门可右键_有按钮.txt、mech_v3_原版_门禁右键_有按钮.txt | 2026-10-05（重跑，守卫自动插 structure） |
 | lt_mech_v45.py | 由 v2/v3 派生 v4（**豁免**负对照：根无 structure）/ v5（根带 structure） | mech_v2/v3 的 txt | mech_v4_按钮门触发子门_根无结构.txt、mech_v5_根带结构_门禁右键_有按钮.txt | 2026-10-05（重跑 + 反做还原校验） |
+| lt_np.py | **街区通用库**（1.5.87 基线）：`Vol` = numpy 体素 + 贪心合并 + 无损自检 + 打印导入起点；`export(fn,name,structure=None)` 把结构挂根层（自动补花括号） | 无（被 import） | 由调用者命名 | 2026-10-05（被 lt_street/lt_loop/lt_probe187 反复调用，全部无损 True） |
+| lt_probe187.py | 1.5.87 探针：A 官方 particle_emitter 原文 / B 新键名粒子 / C 扇叶+stayAnimated / D light 亮度15 / E 门 state→灯 / F 自激灯+总开关 / F10 十盏灯 / H 1/4 圆柱墙(R=8格+4px 倒角) / I 30° 斜板(11 分量可变形盒)；样品间隔 2 格排开 | 无（自建体素 + SDF） | probe_187.txt | 2026-10-05（lt_root 断言通过 + lt_tree [问题] 无；9980 B / 242 盒 / 导入起点 (0,0,0)） |
+| lt_street.py | 主街路面 4 段×16 格（**随 v1 街区作废**，留作排版/SDF 参考） | 无（自建体素） | street_0..3.txt | 2026-10-05（4 段无损 True；起点 -800/-784/-768/-752, y=3, z=313） |
+| lt_loop.py | 自转扇叶样品：4 叶 + 青色发光轴，advancedDoor rotY 0→360（linear, 40 tick） | 无（自建体素） | loop_fan.txt | 2026-10-05（无损 True + lt_tree [问题] 无；线性关键帧编码有源码自检断言） |
 | lt_root.py | **根层守卫**：根有 children 就必须有 structure（缺则插入 + 硬断言）；CLI `selftest`/`verify`/`diff` | 根层文本（库） | 无（库；CLI 只打印） | 2026-10-05（selftest 全过 + verify 全部样品） |
-| lt_tree.py | 导入文本树/语法校验器：递归解析 tiles/structure/children，查 6 分量、上界排他、count、min/size、structure id、offGrid 陷阱 | 蓝图 txt | 无（只打印） | 2026-10-05（校验 mech_test.txt + mech_v1~v5 共 6 份，全部无问题） |
+| lt_tree.py | 导入文本树/语法校验器：递归解析 tiles/structure/children，查 6 分量与 **7/11 分量可变形盒**、上界排他、count、min/size（全树并集）、structure id（含 1.5.87 新增 id）、advancedDoor 的 offGrid 陷阱 | 蓝图 txt | 无（只打印） | 2026-10-05（校验 mech_test + mech_v1~v5 + loop_fan + ramen_curtain + street_0..3 + probe_187，全部 [问题] 无） |
 
 ## 说明
 - `nexus_lab.txt` / `neon_tower.txt` / `neon_city.txt` / `ramen_shop.txt` / `cyber_lab.txt` 等大蓝图**不入库**（脚本可重新生成）。
 - `lt_src/`、`cc_src/` 反编译源码与各 jar 也不入库（只读参考）。
-- 样品（`samples/`）：office_chair.txt（椅子）、med_bed.txt（床）、service_ladder.txt（梯子）、lab_door.txt（推拉门）、mech_test.txt（机关测试台）。
+- 样品（`samples/`）：office_chair.txt（椅子）、med_bed.txt（床）、service_ladder.txt（梯子）、lab_door.txt（推拉门）、mech_test.txt（机关测试台）、loop_fan.txt（自转扇叶）。
+- 文档：`NOTES.md`（环境/结论/审美/进度/测试记录/1.5.87 基线核对）、`HANDOFF.md`（交接 + 源码结论 + 测试清单）、`DESIGN.md`（天梯城设计稿 v2 + R1~R8）、`PLAN.md`（天梯城总图 v2）、`PLAN_v1_old.md`（旧 v1 街区总图，已作废）。

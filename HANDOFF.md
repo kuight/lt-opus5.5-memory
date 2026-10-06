@@ -1,31 +1,40 @@
-# HANDOFF —— LittleTiles 1.12.2 像素小镇·街区项目（给下一个无记忆的会话）
+# HANDOFF —— LittleTiles 1.12.2 天梯城项目（给下一个无记忆的会话）
 
-> 配套文档：`NOTES.md`（环境/已验证结论/审美偏好/进度/测试记录/1.5.87 基线核对）、`PLAN.md`（街区总图与坐标）、`DESIGN.md`（科幻赛博朋克设计稿）、`FILES.md`（脚本清单）。
-> 工作目录 `E:\work\建筑\`（**所有脚本必须在此目录运行**：`lt_colors.py` 用相对路径读 `flatcoloredblocks.csv`）；记忆仓库 `E:\work\lt-memory\`（远端 GitHub `kuight/lt-opus5.5-memory`）。
-
----
-
-## 0. 会话开场三件事（别跳）
-
-1. **先写 `probe.txt` 并用 `dir` 确认**（用户要求的工作惯例）。
-2. **不要用命令把大段文本打到终端**：用 `read`(带 offset/limit) / `grep` / `glob` 工具精读。大蓝图单行上百 KB，`grep` 命中会返回整行 —— 慎用。
-3. **凡是"落盘"立刻读回验证**；改 `.py` 后跑 `python -m py_compile` 或直接重跑生成器。
-
-**工具侧的坑（本会话踩过）**：
-- PowerShell 的 `Copy-Item`/`Test-Path` 会把 `[...]` 当通配符 —— mods 里那些 `[小方块]…jar` 必须用 `-LiteralPath`，或先用 `Get-ChildItem | Where-Object` 拿到对象再复制。
-- `java -jar cfr.jar` 传**中文路径**参数会被 JVM 用 ANSI 码页解码而失效（报 `No such jar file E:\work\????\...`）→ 把 jar/输出目录放**纯 ASCII 路径**，跑完再搬回中文目录。
-- `Set-Clipboard` 可用（会话里做过）；`.ps1` 被执行策略挡，用 `.bat`（`powershell -NoProfile -ExecutionPolicy Bypass -File`）包装，已有 `put.bat` / `put.ps1` 一键把蓝图 JSON 塞进剪贴板。
-- **push 到 GitHub 时通时不通**（`Recv failure: Connection was reset` / `Failed to connect ... 443`）。用户要求：**失败就原样贴报错，不要换别的方式绕过**；网络恢复后 `git push origin main` 即可。
+> 配套：`NOTES.md`（环境/已验证结论/审美偏好/进度/测试记录/1.5.87 基线核对）、`PLAN.md`（天梯城总图 v2，旧版 `PLAN_v1_old.md`）、`DESIGN.md`（设计稿 v2 + 规则 R1~R8）、`FILES.md`（脚本清单）。
+> 工作目录 `E:\work\建筑\`（**脚本必须在此目录运行**：`lt_colors.py` 用相对路径读 `flatcoloredblocks.csv`）；记忆仓库 `E:\work\lt-memory\`（远端 `kuight/lt-opus5.5-memory`）。
 
 ---
 
-## 1. 环境（当前实况）
+## 0. 会话开场（必做）
 
-- MC 1.12.2 Forge；**游戏已实跑 LittleTiles 1.5.87 + CreativeCore 1.10.71**（2026-10-05 用户启用，旧存档已备份，旧建筑与旧机关正常）。
-- 原版 1.12.2 线（旧记录）：`LittleTiles_v1.5.0-pre199_19` + `CreativeCore_v1.10.10`（两个 jar 都还在 mods 里，`.disabled` 的是新版）。
-- 其它：FlatColoredBlocks `mc1.12-6.8`、WorldEdit `6.1.10`。
-- 反编译源码：`lt_src\`（pre199）、`lt_src_187\`（1.5.87，438 个 java）；`cc_src\`（CreativeCore）。三个目录都**不入库**。
-- 存档：`F:\Apply\Release 2.3.0\.minecraft\versions\1.12.2像素小镇\saves\新的世界\`；日志 `…\logs\latest.log`。
+1. 先写 `probe.txt` 并用 `dir` 确认；**不要用命令把大段文本打到终端**，用 `read`(offset/limit) / `grep` / `glob` 工具；凡是落盘立刻读回验证。
+2. **三条规矩（用户 2026-10-05 明确要求）**
+   - (a) **设计任何建筑/功能之前，必须先查资料对照设计目标**（源码 `lt_src_187`、官方 jar 内资源、NOTES/HANDOFF/DESIGN 的既有结论）。**联网搜索 401 期间，只抓用户指定的 URL**，不要自己乱逛。
+   - (b) **测试要压缩到 2~3 张截图**：测试清单必须写明拍摄角度/站位，让用户照着拍。
+   - (c) **每轮结束更新 NOTES/HANDOFF 并推送，回报完整 SHA**；push 失败**原样贴报错**，不要换别的方式绕过。
+3. 工具侧的坑（本会话踩过）
+   - PowerShell 的 `Copy-Item`/`Test-Path` 把 `[...]` 当通配符 → mods 里带方括号的 jar 用 `-LiteralPath` 或先 `Get-ChildItem | Where-Object` 拿对象。
+   - `java -jar cfr.jar` 传**中文路径**参数会被 ANSI 解码搞坏（`No such jar file E:\work\????\...`）→ jar/输出目录放纯 ASCII 路径，跑完再搬回。
+   - `.ps1` 被执行策略挡 → 用 `.bat` 包装（已有 `put.bat`/`put.ps1`，一键把蓝图 JSON 放进剪贴板）。
+   - push 到 GitHub 时通时不通（`Recv failure` / `Failed to connect …443`）→ 原样报错，网络好了再推。
+
+---
+
+## 1. 环境（2026-10-05 实测 dir 结果）
+
+`F:\Apply\Release 2.3.0\.minecraft\versions\1.12.2像素小镇\mods\`：
+
+| 状态 | 文件名 | 字节 |
+|---|---|---|
+| **启用** | `LittleTiles_v1.5.87_mc1.12.2.jar` | 1,994,663 |
+| **启用** | `CreativeCore_v1.10.71_mc1.12.2.jar` | 1,321,137 |
+| 启用 | `[平滑色块] flatcoloredblocks-mc1.12-6.8.jar` | 139,609 |
+| **.disabled** | `[小方块]LittleTiles_v1.5.0-pre199_19_mc1.12.2.jar.disabled` | 1,489,576 |
+| **.disabled** | `[小方块][littletiles前置]CreativeCore_v1.10.10_mc1.12.2.jar.disabled` | 1,086,158 |
+
+- 即：**当前跑 1.5.87 + CC1.10.71**；`pre199_19 + CC1.10.10` 是旧线（已禁用，文件带 `[…]` 前缀）。
+- 反编译源码：`lt_src\`（pre199）、`lt_src_187\`（1.5.87，438 个 java）、`cc_src\`（CreativeCore）——都不入库。
+- 存档 `…\saves\新的世界\`；日志 `…\logs\latest.log`。
 
 ---
 
@@ -33,91 +42,110 @@
 
 | 脚本 | 产物 | 作用 |
 |---|---|---|
-| `lt_np.py` | （库存） | **街区通用库**：`Vol`（numpy 体素 + 贪心合并导出 + 无损自检 + 导入起点打印）；`export(fn,name,structure=None)` 可把结构直接挂根层（自动补 `{}`） |
-| `lt_root.py` | （库存） | **根层守卫**：根有 `children` 就必须有 `structure`（缺则插入 + 硬断言）；CLI `selftest` / `verify` / `diff` |
-| `lt_tree.py` | （库存） | **导入文本树/语法校验器**：递归解析 tiles/structure/children，查 6 分量、上界排他、count、min/size 全树并集、structure id、advancedDoor 的 offGrid 陷阱 |
-| `lt_ramen.py` | `ramen_shop.txt` + `ramen_curtain.txt` | 拉面店外壳 + 门面 + 漏光假灯（LEAKFIX）+ 暖帘独立 noclip 导出 |
-| `lt_street.py` | `street_0..3.txt` | 主街路面 4 段×16 格（导入起点 -800/-784/-768/-752, y=3, z=313） |
-| `lt_loop.py` | `loop_fan.txt` | 自转扇叶样品（advancedDoor rotY 0→360, linear, 40 tick） |
-| `lt_mech.py` / `lt_mech_v.py` / `lt_mech_v45.py` | `mech_test.txt` / `mech_v1..3` / `mech_v4..5` | 机关测试台与对照样品（卷帘门+按钮/翻板/冰柜门/暖帘；A/B 负对照） |
-| `lt_colors.py` + `flatcoloredblocks.csv` | （库存） | hex → FCB 方块名（solid/trans/glow 三类最近邻） |
-| `put.bat` / `put.ps1` | — | `put.bat street_0` 把该蓝图 JSON 放进剪贴板（Little Importer 导入用） |
+| `lt_np.py` | （库） | 街区通用库：`Vol`（numpy 体素 + 贪心合并 + 无损自检 + 打印导入起点）；`export(fn,name,structure=None)` 可把结构挂根层（自动补 `{}`） |
+| `lt_root.py` | （库） | 根层守卫：根有 `children` 就必须有 `structure`（缺则插 + 硬断言）；CLI `selftest`/`verify`/`diff` |
+| `lt_tree.py` | （库） | 导入文本树/语法校验器：递归解析、查 6 分量与 **7/11 分量可变形盒**、上界排他、count、min/size 全树并集、structure id（含 1.5.87 新 id）、offGrid 陷阱 |
+| `lt_probe187.py` | `probe_187.txt` | 1.5.87 探针：A 官方粒子原文 / B 新键粒子 / C 扇叶+stayAnimated / D light15 / E 门→灯 / F 自激灯+总开关 / F10 十盏灯 / H 1/4 圆柱墙(倒角) / I 30° 斜板（间隔 2 格排开） |
+| `lt_ramen.py` | `ramen_shop.txt`、`ramen_curtain.txt` | 拉面店外壳（漏光假灯 LEAKFIX）+ 暖帘独立 noclip 导出 |
+| `lt_street.py` | `street_0..3.txt` | 主街路面 4 段（**已随 v1 街区作废**，可作 SDF/排版参考） |
+| `lt_loop.py` | `loop_fan.txt` | 自转扇叶样品（advancedDoor rotY 0→360 linear 40 tick） |
+| `lt_mech.py` / `lt_mech_v.py` / `lt_mech_v45.py` | `mech_test.txt` / `mech_v1..3` / `mech_v4..5` | 机关测试台与对照样品 |
+| `lt_colors.py` + `flatcoloredblocks.csv` | （库） | hex → FCB 方块名（solid/trans/glow 最近邻） |
+| `put.bat` / `put.ps1` | — | `put.bat probe_187` 把蓝图 JSON 放进剪贴板 |
 
 ---
 
 ## 3. 当前进度
 
-- **拉面店**：外壳完成并已实测导入（灯槽/外墙/暖帘字序字号/风管/橱窗霓虹背板/漏光假灯+门面豁免）。暖帘已改成独立 `noclip` 结构文件（`ramen_curtain.txt`，偏移 `(4,2,1)`，相对店西北角 = `+ (3,2,-1)`）。
-- **主街路面 v1**：已否决（积水椭圆、黑方块删除后仍不合方向），要按 `DESIGN.md` 重做成科幻赛博朋克版。
-- **机关**：`mech_test.txt` 在 1.5.87 下实测"都能动"；`/lt-open` 可用；按钮只能开不能关（见 §4②）。
-- **1.5.87 新增能力**：`light` / `message` 结构能用；`particle` 未测；信号系统（命名端口 + 表达式连线 + PULSE）与红石转换方块已就绪未用。
+- **方向已换**：旧 v1 街区（主街/南排店铺）**作废**；新目标 = **天梯城**（见 `DESIGN.md` v2 + `PLAN.md` v2：100×100 范围、4~255 分层、四网一心跳、R1~R8）。
+- 拉面店：外壳完成、已实测导入；暖帘已改独立 noclip 文件（`ramen_curtain.txt`，相对店西北角偏移 `(3,2,-1)`，即拉面店导入起点 `+(4,2,1)`）。**下一步要整体改成金属舱体科技版（不保留木质外壳）。**
+- 机关：`mech_test.txt` 在 1.5.87 下"都能动"；`/lt-open` 可用；**按钮只能开不能关**（见 §4②）；门禁只挡右键。
+- 1.5.87 能力：`light`/`message` 可用，`particle` 未测；信号系统（命名端口 + 表达式连线 + PULSE + 自激）与 `BlockSignalConverter`（红石⇄信号）已就绪未用。
+- **`probe_187.txt` 已生成并通过 `lt_root`+`lt_tree`**（9980 B，242 盒，导入起点 (0,0,0)，9 样品按 2 格间隔排开）；测试清单见 §6。
 
 ---
 
-## 4. ①②③④⑤ 结论（源码级，行号取自 `lt_src_187`；✔=实测/源码确认，❓=待实测）
+## 4. 源码级结论（行号取自 `lt_src_187`，对照 `lt_src`；✔=源码确认，❓=待实测）
 
-### ① 小方块发光：1.5.87 改成了"体积加权"，所以 FCB 发光小方块几乎不亮
-- **1.5.87** `BlockTile.java:455` `getLightValue(state,world,pos)`：
-  - `:465` tile 属于结构时 → `light = Math.max(light, list.getStructure().getLightValue(pos))`（**结构光照，不缩放**；`LittleLight.java:56` 走这条）
-  - `:474` 否则 → `tempLight = (int)Math.ceil(tile.getLightValue(world,pos) * tile.getPercentVolume(context))`（**按体积比例缩放**）
-- **pre199** `BlockTile.java:455/464`：`tempLight = tile.getLightValue(state, world, pos)` —— **原亮度，无缩放**
-- `getPercentVolume` = 该 tile 占整格的体积比例（`LittleTile.java:196-198` → `LittleBox.java:183`）
-⇒ **FCB 发光块放进小方块后仍然"能放"，但亮度被压**：1 像素³ 的 tile 占比 ≈ 1/4096 → `ceil(15 × 1/4096) = 1` → 看起来等于不亮 ✔（与实测"发光变弱或不亮"一致）
-⇒ **实操：1.5.87 里要发光，用 `light` 结构；别指望 FCB 发光小方块**。❓ 不同体积下的亮度数值没实测；`LittleBox.getPercentVolume` 的分母（整格体积）按 `:183` 理解，未逐行读全。
+### ① 小方块发光：1.5.87 改成"体积加权"，所以 FCB 发光小方块几乎不亮
+- 1.5.87 `BlockTile.java:455`：`:465` 属于结构的 tile → `max(light, structure.getLightValue(pos))`（**不缩放**，`LittleLight.java:56`）；`:474` 否则 `ceil(tile.getLightValue(world,pos) * tile.getPercentVolume(context))`（**乘体积比例**）
+- pre199 `BlockTile.java:455/464`：`tempLight = tile.getLightValue(state, world, pos)`（**原值，不缩放**）
+- ⇒ 1 像素³ 的 tile 占比 ≈ 1/4096 → `ceil(15×1/4096)=1` → 等于不亮 ✔（与"导入后发光弱/不亮"吻合）
+- ⇒ **要发光就用 `light` 结构**。❓ 不同体积的亮度曲线、`LittleBox.getPercentVolume` 分母未逐行确认。
 
-### ② 按钮第二次触发不能关门；`disableRightClick` 也挡不住关门
-- `LittleDoorActivator.openDoor`（`LittleDoorActivator.java:77-86`）：只对 `toActivate` 里的子门调 `child.openDoor(...)` —— **只有"开"这一个方向，从不调 `activate`** ⇒ 按钮开不了"关"，门已开时 `canOpenDoor` 返回 null → 静默跳过 ✔（与实测"按钮能开但关不上"一致）
-- `LittleDoor.activate`（`LittleDoor.java:64-100`）：`:95` `this.opened = !this.opened` → **activate 才是开/关切换**；`:68-70` `if (activator == DoorActivator.RIGHTCLICK && this.disableRightClick) throw ...Hidden("Door is locked!")` → **门禁只挡"右键"这一条路径** ⇒ **`disableRightClick:1b` 不影响关门** ✔
-- `:96-98`：非 SIGNAL 触发时 `getOutput(0).toggle()` → 门的 `state` 输出每次切换都翻转（可驱动灯/信号）
-⇒ **关门手段**：`/lt-open <x> <y> <z> [结构名]`（走 `activate` → 切换，实测可用）或命令方块时钟反复跑它；1.5.87 还可用红石转换方块+门 `state` 输出做联动。
+### ② 按钮第二次触发不能关门；`disableRightClick` 挡不住关门
+- `LittleDoorActivator.openDoor`（`:77-86`）只调 `child.openDoor(...)`（**只有"开"**，从不 `activate`）；`:79` `inMotion = true`，`isInMotion()`（`:120-123`）= 该标志
+- `LittleDoor.activate`（`:64-100`）`:95` `opened = !opened`（**activate 才是开关切换**）；`:68-70` 仅 `DoorActivator.RIGHTCLICK` 受 `disableRightClick` 限制
+- ⇒ 关门用 `/lt-open`（走 activate=切换）或**信号**（见 ⑤）。
 
-### ③ `stayAnimated:1b` 能消除"变回方块时闪一下 + 放置声"，但有"起点必须对齐"的限制
-- 现象根因：`DoorController.java:146-150`（187）`endTransition()` → `if (turnBack != null && turnBack == (state==opened)) this.place();` —— **`place()` 就是把动画实体换回方块**（闪烁+放置声）
-- `stayAnimated=true` ⇒ 构造 controller 时 `turnBack = null`（`LittleAdvancedDoor.java:284`、`LittleSlidingDoor.java:71`、`LittleAxisDoor.java:215`）⇒ **`place()` 不执行，门保持在动画态** ✔
-- **NBT 写法**：`stayAnimated:1b`（`LittleDoorBase.java:79` 字段、`:101` 读 `getBoolean("stayAnimated")`、`:115-116` **仅 true 时写**）
-- **限制（"必须整圈"的来源）**：
-  - `LittleAdvancedDoor.java:697`：任一时间轴"未对齐"→ **强制 `stayAnimated=true`**（GUI 里取消不掉）
-  - `AnimationKey.java:110`（RotationKey）`isAligned = value % 360.0 == 0.0`；`:90`（OffsetKey）位移必须为 0
-  - `AnimationTimeline.java:204-206 isFirstAligned()` + `LittleAdvancedDoor.java:564` `settings.stayAnimatedPossible = animation.isFirstAligned()`
-  ⇒ **起点 rotY=0（360 的整数倍）就满足**，我们 `loop_fan` 的起点正是 0 ⇒ **可以直接加 `stayAnimated:1b`** ✔
-- 副作用（好）：`LittleDoorBase.java:293-295 isInMotion() = animation != null && controller.isChanging()` ⇒ **停在动画态、不在过渡中时 `isInMotion()==false`** ⇒ 仍可被命令方块反复触发 ✔
-- ❓ 动画实体长期停留对碰撞/光照/存档的影响没实测。
+### ③ `stayAnimated:1b` 能消除"变回方块时的闪烁+放置声"；限制是"起点必须对齐"
+- 现象根因 `DoorController.java:146-150`：`endTransition()` 里 `if (turnBack != null && …) this.place();`（place=动画实体换回方块）
+- `stayAnimated=true` ⇒ `turnBack = null`（`LittleAdvancedDoor.java:284`、`LittleSlidingDoor.java:71`、`LittleAxisDoor.java:215`）⇒ 不 place()、门停成动画实体
+- NBT：`stayAnimated:1b`（`LittleDoorBase.java:79/101/115-116`，仅 true 时写）
+- 限制："必须整圈"来自 `AnimationKey.java:110`（RotationKey `isAligned = value % 360 == 0`）、`:90`（OffsetKey 须 0）、`AnimationTimeline.java:204-206 isFirstAligned()`、`LittleAdvancedDoor.java:564/697`（未对齐则强制 true、GUI 取消不掉）
+- 好处：`LittleDoorBase.java:293-295 isInMotion() = animation != null && controller.isChanging()` ⇒ 停住时 `isInMotion()==false` ⇒ 仍可被反复触发 ✔ ❓ 长期停留对碰撞/光照的影响未测。
 
-### ④ 关门一定"倒放"，没有独立关门时间轴
-- `LittleAdvancedDoor.java:252/258/264`（offX/offY/offZ）+ `:270/276/282`（rotX/rotY/rotZ）：**close 时间轴 = `open.invert(duration)` 逐通道生成**；`:284` 把它交给 `DoorController(open, close)`
-- NBT 里只存在一个 `animation:{rotX/rotY/rotZ/offX/offY/offZ}`（`:168-169` 等）⇒ **没有"关门时间轴"字段** ⇒ 关门必然倒放（`ValueTimeline.invert(duration)`，`ValueTimeline.java:201-215`）
-- 变通（不改源码）：① 把扇叶做成**中心对称**（4 叶 90° 对称或 2 叶 180° 对称）→ 倒放看不出来；② 只追求"关掉时别闪/别响" → 用 ③ 的 `stayAnimated:1b`；③ 真要"关门也正转"只能改源码加字段。
+### ④ 关门倒放：**中心对称只掩盖停位跳变，不掩盖转向；倒放无不改源码解法；child 事件叠加正转方案待查。**
+- 依据：`LittleAdvancedDoor.java:252/258/264`（offX/Y/Z）、`:270/276/282`（rotX/rotY/rotZ）—— **close = `open.invert(duration)`**；`:284` 交给 `DoorController(open, close)`；NBT 只有 `animation:{rot*…/off*…}`，**没有独立关门时间轴** ⇒ 关门必然倒放（`ValueTimeline.java:201-215`）
+- `ChildActivateEvent.run`（`:51-72`）：只在服务端、只对 `LittleDoor` 子结构、且**只 `openDoor`（不 activate）** ⇒ 想靠 child 事件"补一次正转开门"来掩盖倒放，目前**没验证过**，待查（事件在关闭回放时会按 `LittleDoorBase.java:169-175` + `AnimationEvent.java:160` 的 `invert(duration)` 镜像触发时刻）。
 
-### ⑤ `particle_emitter` 怎么获得 + NBT 范本
-- **有合成表**：`assets/littletiles/recipes/particle_emitter.json`（jar 内实测）
-  ```
-  图案:  C D C        C = minecraft:concrete (data 15 黑色混凝土) ×6
-         G R G        D = minecraft:dispenser (发射器)  ×1  ← 顶部中间
-         C C C        R = minecraft:redstone_block (红石块) ×1
-                      G = minecraft:firework_charge (烟火之星) ×2
-  "type": "littletiles:crafting_shaped_premade", "result": {"item":"littletiles:premade","structure":"particle_emitter"}
-  ```
-- 也可 `/give`：预制品物品注册名 = `littletiles:premade`（`LittleTiles.java:252` `new ItemPremadeStructure().setRegistryName("premade")`），物品 NBT 里带 `structure:{id:"particle_emitter"}`（`LittleStructurePremade.java:62-81` 的装载逻辑）⇒ `/give @p littletiles:premade{structure:{id:"particle_emitter"}}` ❓(按源码推导，未实测)
-- **官方预制品原文**（`assets/littletiles/premade/particle_emitter.struct`，可直接当模板）：
-  ```json
-  {tiles:[{bBox:[I;0,0,0,1,1,1],tile:{color:-13619152,block:"littletiles:ltcoloredblock"}}],
-   min:[I;0,0,0],size:[I;1,1,1],grid:16,count:1,
-   structure:{ticker:3,speedZ:0.0f,color:-1,speedY:0.1f,speedX:0.0f,texture:"smoke",lifetime:20,
-              facing:4,tickDelay:10,spread:0.0f,size:0.4f,gravity:0b,growrate:1.0f,id:"particle_emitter",state:0}}
-  ```
-  ❓ 该 .struct 用的是**扁平旧键**，而反编译出的写侧用 `ParticleSettings` 的键（`color`/`lifetime`/`lifetimeDeviation`/`texture`/`randomColor`/`collision`，`LittleParticleEmitter.java:358-381`）+ `tickDelay`/`tickCount`/`ticker`（`:156-173`）+ spread `steps`（`:211`）——**新写文件该照哪套键名，未确认**（以官方 .struct 能加载为准，但可能只是兼容旧键）。
+### ⑤ `particle_emitter` 获取 + NBT（含 g 可变形盒）
+- **合成表**（jar 内 `assets/littletiles/recipes/particle_emitter.json`）：图案 `CDC / GRG / CCC`；C=`minecraft:concrete` data15 ×6、D=`minecraft:dispenser` ×1、R=`minecraft:redstone_block` ×1、G=`minecraft:firework_charge` ×2；`type: littletiles:crafting_shaped_premade`
+- **给物品（1.12 语法）**：`/give @p littletiles:premade 1 0 {structure:{id:"particle_emitter"}}`（物品注册名 `littletiles:premade`，`LittleTiles.java:252`；NBT 带 `structure:{id:…}`，`LittleStructurePremade.java:62-81`）❓未实测
+- **官方预制品原文**（`assets/littletiles/premade/particle_emitter.struct`）用的是**扁平旧键**；`loadSettings`（`LittleParticleEmitter.java:156-162`）确实读扁平键 `tickDelay`/`ticker`/`tickCount`/`speedY`/`spread`，但 **`color/lifetime/texture/size/gravity/growrate` 只在 `settings` 子标签里读**（`:161` `hasKey("settings") ? new ParticleSettings(…) : SMOKE 预设`）⇒ **官方 .struct 里那些键多半被忽略、实际走 SMOKE 预设**
+- **新写法键表**：`tickDelay:int, tickCount:int, ticker:int, speedX/Y/Z:float, spread:float`（+圆形扩散 `steps:int`）、`settings:{color,lifetime,lifetimeDeviation,gravity,startSize,endSize,sizeDeviation,randomColor,collision}`（`LittleParticleEmitter.java:169-178`、`:358-381`）、`facing:int`（方向字段，默认 UP=4）、输出端口 `disabled`
+- **g 可变形盒（1.5.87 新增）**：`LittleBox.createBox(int[])`（`:1120-1139`）——**6 分量**=普通盒；**7 分量**=`[6 坐标, slice id]`；**11 分量**=`[6 坐标, slice id, 4 个 float 位(startOne,startTwo,endOne,endTwo)]`（`Float.intBitsToFloat`）；187 里 `<0` 的 slice id 走另一套通用编码 ❓。**pre199 有同一套 7/11 编码但走切片盒**（`lt_src/LittleBox.java:1051-1060`），**没有可变形盒** ⇒ 同一文本两版解释不同。
+
+### ★ 附属评估
+- **ALET（A Little Extra Tiles）候选**：见 §7 结论（本轮已评估）。
+- **Little Opener 不再需要**：`/lt-open`（命令方块可跑）+ 1.5.87 信号系统已覆盖"远程开关门"的需求，不引入额外前置。
+
+### d. 信号最小 NBT 例（1.5.87）
+- 端口状态存放：内部**输出**＝以端口名为键的 COMPOUND（`LittleStructure.java:650/578`），键 `state:int`(位图)/`con:string`/`mode:string`/`delay:int`（`InternalSignalOutput.java:71-82`）；内部**输入**＝以端口名为键的 int（`InternalSignalInput.java:36`）；外部输出处理器＝`signal` TAG_LIST（`:636-641`/`:556-568`）
+- 目标表达式：`a<n>`=自己内部输入、`b<n>`=自己内部输出、`i<n>`/`o<n>`=外部输入/输出（指向子结构 single_input/single_output）、`c<n>.…`=下钻子、`p.…`=父（`SignalTarget.java:19-81`；`SignalUtils.java:16-72`）
+- 运算符（`SignalLogicOperator.java:13/52/91/130/164/198/232…`）：`+`=or、`V`=xor、`&`=b-and、`|`=b-or、`^`=b-xor、`#`/`-`/`*`/`/`=算术；`!`=not（`SignalInputCondition`）
+- **①按钮/doorActivator → light**：灯 `enabled:{state:0,con:"p.b0",mode:"EQUAL",delay:0}`，灯作为按钮的子结构（`p.b0` = 按钮的 `state` 输出）
+- **②门 state → light**：同上，灯作为门的子结构（门只有 `addOutput("state")`，无输入）
+- **③自引用**：`enabled:{state:0,con:"!b0",mode:"EQUAL",delay:10}`（`b0`=自己）⇒ 自激振荡；再与总开关做与：`con:"!b0&p.b0"`
+
+### e. 门能被信号开/关吗？**能**（虽然没有命名输入）
+- `LittleDoor.performInternalOutputChange`（`LittleDoor.java:176-186`）：当端口名 `"state"` 且 `opened != output.getState()[0]` 且不在运动中 → `activate(DoorActivator.SIGNAL, null, null)` ⇒ **信号写门的 state 输出即可开关门**，且 SIGNAL 路径不受 `disableRightClick` 限制 ✔
+- ⇒ 这才是"按钮控制开关门"的正解（按钮走 openDoor 只能开，见 ②）
+
+### f. child 事件在关门（倒放）时的行为
+- `ChildActivateEvent.run`（`:51-72`）：**只 openDoor，不 activate** ⇒ 关门过程中即使事件触发，也只是"再开一次"；若子门已在开态 → `canOpenDoor` 返回 null → 静默不动 ✔
 
 ---
 
-## 5. 下一步计划（用户已定）
+## 5. 下一步计划（用户已定，按此顺序）
 
-1. **`lt_np.py` 扩展**：加 `light` / `particle` / `signal` 的接口（把命名端口、`signal` 列表、`stayAnimated`、条件表达式 `con` 都做成可写参数），让后续所有模块都能直接产出带机关的蓝图。
-2. **拉面店整体改成"金属舱体科技版"**（保留木质外壳做对比 → 见 `DESIGN.md` 末行）：全息菜单、神经支付环、机械臂煮面、低温冷柜、能源电池柜、散热风扇、无人机投递口、线缆槽。
-3. **按 `DESIGN.md` 铺街道**：S1 光栅人行横道 / S2 悬浮舱停靠站 / S3 能源管廊 / S4 交通控制塔路口（每段主题不同，机关清单见 DESIGN.md；同类元素相邻 3 段不重复）。
+1. **`lt_np.py` 加接口**：把 `light` / `particle` / `signal`（命名端口、`signal` 列表、`con` 条件、`stayAnimated`、可变形盒）做成可写参数，让后续模块直接产出带机关的蓝图。
+2. **拉面店 → 金属舱体科技版**（不保留木质外壳；见 DESIGN 末行设施清单）。
+3. **按 `DESIGN.md` + `PLAN.md` v2 铺天梯城**：人造山体 + 峡谷 + 四层竖向分区；巨构用 WorldEdit 整方块，中近景用 LittleTiles。
 
-**做这三件事时的既有约束**：
-- 坐标：`PLAN.md` 为总图（西北角 x=-800,z=300；主街 y=3 一层，建筑从 y=4 起；南排 拉面店 -800~-792 / 小巷 -791~-790 / 便利店 -789~-778 / 居酒屋 -777~-769 / 公寓楼梯间 -768~-761 / 电玩店 -760~-749）。
-- 导入锚点：**蓝图 min 角落在锚点格上**，体素落点 = `锚点 + floor(蓝图坐标/16)`；脚本会自动打印"导入起点"，别手算。
-- 硬规则：根有 `children` 必须有 `structure`（`lt_root` 会拦）；写完必跑 `lt_tree.py` 复核 `[问题] 无`；`Vol.export` 的无损自检必须 True。
-- 审美：偏科幻高科技；赛博朋克的"旧/乱"用改装/外露线缆/维修痕迹表现，**不用日常市井物件**（消防栓、共享单车、普通垃圾桶否决）；不做积水；看得见的东西都要能交互；每轮要拿出足够的量与细节。
-- 光照：1.5.87 下小方块自身发光被体积加权压掉 → **用 `light` 结构**；室外离室内 ≤2 格的装饰灯用同色不发光假灯（`lt_ramen.py` 的 LEAKFIX 是参考实现）。
+**既有硬约束**：蓝图 min 角落锚点格、体素落点 = `锚点 + floor(坐标/16)`；根有 children 必须有 structure（`lt_root` 拦）；写完必跑 `lt_tree` 到 `[问题] 无`；`Vol.export` 无损必须 True；室外离室内 ≤2 格的装饰灯用同色假灯（1.5.87 下小方块自发光基本无效，直接上 `light` 结构）。
+
+---
+
+## 6. 探针测试清单（用户照着拍 2~3 张图）
+
+样品排布（从西往东，间隔 2 格，全部坐在 2px 底座上）：A 官方粒子 → B 新键粒子 → C 扇叶 → D 灯15 → E 门→灯 → F 自激 → F10 十盏 → H 曲面 → I 斜板。导入起点 (0,0,0)（把蓝图 min 角对准你站的那一格）。
+
+- **图1**：站在样品排**南侧**、**斜上方约 45°**，让全部样品入画（看 A/B 粒子效果、D/E 亮度、H 曲面观感）
+- **图2**：贴近 **H（和 I）2 格平视**（看曲面台阶感/倒角、斜板角度）
+- **文字回报**：C 是否还闪、还有没有放置声；E 开关两次的灯状态；F 是否自己闪、大概几秒一次、按钮能否停；F10 开启前后帧率与卡顿感
+- **G（不用蓝图）**：在一盏**原先放着的旧发光建筑**旁边放一个方块再拆掉，看它会不会变暗（验证 §4① 的体积加权光照是否也影响旧建筑）
+
+---
+
+## 7. 附属评估（ALET / Little Opener）
+
+**ALET = A Little Extra Tiles（候选，未安装）**
+- 来源：用户给的三个 URL 之一（Modrinth 项目 `NWquC4YJ` / slug `a-little-extra-tiles`）⇒ 机器可读视图：**`game_versions: ["1.12.2"]`、loader `forge`、当前版本 `1.0.23`、共 18 个已发布版本、许可 LGPL-3.0-only、下载 15397**
+- **要求的 LT/CC 版本**（官方 README 正文原文）："The current version of A Little Extra Tiles (ALET) 1.0.23 is compatible with **CreativeCore_v1.10.70** and **LittleTiles_v1.5.58_mc1.12.2**" ⇒ 比我们当前（**1.5.87 + 1.10.71**）**旧**；向上兼容性 **❓未验证**
+- 它做什么：**Photo Importer**（图片→LittleTiles 结构，默认上限 **98×98**）、**Typewriter**（文字/字体→结构）、**Tape Measure**（测距，最多 10 组）、以及**新增结构类型（new structure types）**
+- ⚠️ **卸载后会不会坏**：README 明确写它 "adds … **new structure types**" ⇒ 一旦生成的结构引用了 ALET 自己的结构类型，**卸载 ALET 后大概率失效/报错**（原版找不到该 id）；图片/文字导入本身产出的应主要是普通 tile（原版/FCB 方块），但**"到底用了哪种结构类型"在不安装的情况下无法确认** ⇒ 标记为**推断 + ❓**
+- **抓取情况（如实回报）**：用户给的三个 URL → Modrinth 页面本体是 JS 渲染（只回标题）、CurseForge 页面 **403 Cloudflare**（"Just a moment..."）、GitHub 页面只回导航壳、`raw.githubusercontent` 拉取失败。上述结论数据来自**同三个资源的机器可读视图**（Modrinth API + 官方 README 正文），已注明来源。
+- **建议**：**先不动**。要用的话必须①先备份存档；②只用于"生成纹理/文字这类纯 tile"的活；③**不要把 ALET 的结构类型嵌进主体建筑**；等出现 1.5.87 兼容声明再考虑批量用。
+
+**Little Opener：不再需要** —— `/lt-open`（可用命令方块跑）+ 1.5.87 信号系统（门 `state` 输出 → `activate(SIGNAL)`，见 §4e）已覆盖"远程开关门"，不引入额外前置。

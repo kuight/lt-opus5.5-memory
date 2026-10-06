@@ -7,7 +7,13 @@
 import re, sys, io, os
 
 REG = {"fixed", "ladder", "bed", "chair", "storage", "noclip", "door", "slidingDoor",
-       "advancedDoor", "doorActivator"}
+       "advancedDoor", "doorActivator",
+       # ↓ 仅 1.5.87 有（pre199 无）：见 NOTES 1.5.87 基线核对
+       "light", "message", "item_holder", "particle_emitter", "blankomatic",
+       "single_cable1", "single_cable4", "single_cable16",
+       "single_input1", "single_input4", "single_input16",
+       "single_output1", "single_output4", "single_output16",
+       "signal_display_16", "structure_builder"}
 ROOT_KEYS = ("tiles", "structure", "children", "min", "size", "count")
 NODE_KEYS = ("tiles", "structure", "children")
 
@@ -131,11 +137,13 @@ def walk(s, i, depth, path, rep, st):
         st["rootboxes"] = nbox
     for blk, rs, keys in els:
         for r in rs:
-            st["acc"].append(r)
-            if len(r) != 6:
-                st["issues"].append("%s 盒非 6 分量: %s" % (path, r))
-            elif not (r[0] < r[3] and r[1] < r[4] and r[2] < r[5]):
+            st["acc"].append(r[:6])
+            if len(r) not in (6, 7, 11):
+                st["issues"].append("%s 盒分量数 %d 非法（只接受 6 / 7=6+slice / 11=6+slice+4float）: %s" % (path, len(r), r))
+            elif len(r) == 6 and not (r[0] < r[3] and r[1] < r[4] and r[2] < r[5]):
                 st["issues"].append("%s 盒上界非排他: %s" % (path, r))
+            elif len(r) > 6:
+                rep.append("%s可变形盒: 6坐标%s slice=%d 附加=%s" % ("  " * depth, r[:6], r[6], r[7:]))
             if not blk or blk == "?":
                 st["issues"].append("%s 有条目缺 tile.block" % path)
 

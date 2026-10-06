@@ -1,7 +1,7 @@
 # LittleTiles 1.12.2 建筑项目备忘
 
 ## 环境
-- MC 1.12.2 Forge，LittleTiles pre199_19，FlatColoredBlocks，Little Importer，WorldEdit
+- MC 1.12.2 Forge；**当前** LittleTiles 1.5.87 + CreativeCore 1.10.71；**旧线** pre199_19 + CC 1.10.10。另有 FlatColoredBlocks、WorldEdit
 - 存档：超平坦；工作目录 E:\work\建筑\
 - 执行 agent：DeepSeek harness 上的 DeepSeek V4.1 Flash；每次会话先写 probe.txt 并用 dir 确认
 - 脚本必须在 E:\work\建筑\ 下运行（lt_colors.py 用相对路径读 CSV）
@@ -23,12 +23,13 @@
 10. 尺度：1 格 = 1 米；店铺层高 5~6 格，门高 2.5~3 格，柜台 15~16px，楼梯 8px
 11. 光照按整格计算，LittleTiles 不挡光：墙外发光件会照亮同格/邻格墙内侧。离室内 ≤2 格的装饰灯一律用同色不发光色块（假灯），由漏光检查自动处理。
 12. 门动画不能循环；AnimationEvent 只有 child（childId）和 sound-event（sound/volume/pitch/opening）；
-    child 事件只能向下触发直系子门，doorActivator 可被触发；没有 light 结构。
+    child 事件只能向下触发直系子门，doorActivator 可被触发；light 结构见 HANDOFF §4。
     长动画方案：一次触发、按 tick 级联子门。
 13. pre199 有 /lt-open <x> <y> <z> [结构名...]（OP 权限 2，坐标为绝对坐标，结构名可选、用于过滤）；
     player=null，不受 disableRightClick 限制；循环 = 命令方块 + 时钟反复触发。
     duration 无上限（GUI 的 500 只是滑块范围）；rot 可超过 360，会被拆成多个半圈插值；子结构随父结构一起动。
-    pre199 不读红石。本地有 1.5.87 + CreativeCore 1.10.71（已禁用），1.5.87 才有 light/信号/粒子。
+    pre199 不读红石。本地已启用 1.5.87 + CreativeCore 1.10.71，1.5.87 才有 light/信号/粒子。
+14. 1.5.87 有信号转换器 BlockSignalConverter（红石⇄信号互转，源码确认，未实测）。
 
 ## 用户审美偏好
 - 要极致细节，全程用小方块，不要火柴盒式的造型
@@ -40,6 +41,7 @@
 - 赛博朋克味要贯穿侧墙、路面，而不只是门面
 - 用户觉得分段做、做得少就是敷衍：每一轮都要拿出足够的量和细节
 - 风格偏科幻、高科技；赛博朋克的“旧/乱”用改装、外露线缆、维修痕迹表现，不用日常市井物件（消防栓、共享单车、普通垃圾桶等否决）
+- 1.5.87 新光照渲染更有科幻感，保持；用户吐槽“模块化堆砌感、缺曲线斜面过渡微雕、功能贴近现在” → 设计规则 R1~R8 见 DESIGN.md
 
 ## 当前进度
 - 拉面店外壳完成（灯槽/外墙/暖帘字序字号/风管/橱窗霓虹背板/漏光假灯+门面豁免 均已修）
@@ -53,6 +55,7 @@
 - loop_fan：开 0→360 顺时针，关时倒放成逆时针；回到原位时闪一下并有放置方块的声音
 - 导入后发光变弱或不亮（待查）；新版光照渲染变了，用户觉得更有科幻感
 - light、message 结构能用；particle 还没测
+- 旧蓝图导入后发光弱/不亮，但原先放着的旧建筑亮度正常（原因待测 G）
 
 ## 1.5.87 基线核对（源码只读核对，未改代码；行号取自 lt_src_187）
 | NOTES 条目 | 1.5.87 | 证据 |
