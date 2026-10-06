@@ -56,7 +56,8 @@ def check(path, arc=None):
     txt, arrs = load(path)
     issues, rep = [], []
     if not arrs:
-        print("!! %s 没有可变形盒（≥7 分量）" % path); return 0, 0.0, 0.0
+        print("== %s：无可变形盒 → 本项检查不适用（跳过）" % path)
+        return 0, 0.0, 0.0, 0
     polys = []
     for a in arrs:
         pts = corners_of(a)
@@ -69,16 +70,19 @@ def check(path, arc=None):
             dv = max(dev_plane(q[0], q[1], q[2], q[3]), dev_plane(q[1], q[2], q[3], q[0]))
             if dv > 0.01:
                 issues.append("盒 %s 的 %s 面不共面（偏差 %.3f px）" % (a[:6], nm, dv))
-        # ② 竖边 U/D 偏移一致
+        # ② 竖边 U/D 偏移一致 —— **仅对纯竖直拉伸件**（全盒无 Y 偏移）适用；
+        #    有 Y 偏移的是斜切/倒角件（45° chamfer），按共面检查判定
         d = lt_tbox.decode(a)
         off = {}
         for o in d["offsets"]:
             off[(o["corner"], o["axis"])] = o["offset"]
-        for cu, cd in VERT:
-            for ax in ("X", "Z"):
-                if off.get((cu, ax), 0) != off.get((cd, ax), 0):
-                    issues.append("盒 %s 竖边 %s/%s 的 %s 偏移不一致（%d vs %d）"
-                                  % (a[:6], cu, cd, ax, off.get((cu, ax), 0), off.get((cd, ax), 0)))
+        has_y = any(k[1] == "Y" and v != 0 for k, v in off.items())
+        if not has_y:
+            for cu, cd in VERT:
+                for ax in ("X", "Z"):
+                    if off.get((cu, ax), 0) != off.get((cd, ax), 0):
+                        issues.append("盒 %s 竖边 %s/%s 的 %s 偏移不一致（%d vs %d）"
+                                      % (a[:6], cu, cd, ax, off.get((cu, ax), 0), off.get((cd, ax), 0)))
         polys.append(pts)
     mx = avg = 0.0
     if arc:
@@ -97,10 +101,11 @@ def check(path, arc=None):
                 if not (pts["WDN"][1] - 0.001 <= y <= pts["WUN"][1] + 0.001): continue
                 seq = [(pts["WDN"][0], pts["WDN"][2]), (pts["EDN"][0], pts["EDN"][2]),
                        (pts["EDS"][0], pts["EDS"][2]), (pts["WDS"][0], pts["WDS"][2])]
+                dmin = min(to_seg(px, pz, seq[k], seq[(k + 1) % 4]) for k in range(4))
                 inside = True
                 for k in range(4):
                     a1p, b1p = seq[k], seq[(k + 1) % 4]
-                    cr = (b1p[0] - a1p[0]) * (pz - a1p[2]) - (b1p[2] - a1p[2]) * (px - a1p[0])
+                    cr = (b1p[0] - a1p[0]) * (pz - a1p[1]) - (b1p[1] - a1p[1]) * (px - a1p[0])
                     if cr < -1e-6: inside = False; break
                 best = min(best, 0.0 if inside else dmin)
             tot += best
@@ -128,11 +133,14 @@ def check(path, arc=None):
         print("   PNG: %s_top.png / %s_front.png" % (path[:-4], path[:-4]))
     except Exception as ex:
         print("   (PNG 跳过: %s)" % ex)
-    print("== %s：可变形盒 %d 个，问题 %d 条" % (path, len(arrs), len(issues)))
+    print("== %s：可变形盒 %d 个，问题 %d 条（竖边不一致 %d 处 / 不共面 %d 处 / 其他 %d 处）"
+          % (path, len(arrs), len(issues),
+             sum(1 for x in issues if "竖边" in x), sum(1 for x in issues if "不共面" in x),
+             sum(1 for x in issues if "竖边" not in x and "不共面" not in x)))
     for x in issues[:12]:
         print("   [问题] " + x)
     if arc: print("   偏差：最大 %.2f px，平均 %.2f px（目标弧面取 2000 点）" % (mx, avg))
-    return len(arrs), mx, avg
+    return len(arrs), mx, avg, len(issues)
 
 
 if __name__ == "__main__":
@@ -141,5 +149,5 @@ if __name__ == "__main__":
     if len(sys.argv) > 2:
         R, th, a0, a1, h = [float(v) for v in sys.argv[2].split(",")]
         arc = (R, th, a0, a1, h)
-    n, mx, avg = check(p, arc)
-    sys.exit(1 if n == 0 else 0)
+    n, mx, avg, ni = check(p, arc)
+    sys.exit(1 if ni > 0 else 0)

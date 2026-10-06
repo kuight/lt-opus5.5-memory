@@ -155,21 +155,28 @@ def _split_quad(poly):
 
 
 def merge_entries(entries):
-    """把多个盒子条目按材质合并成【规范形状】{boxes:[…],tile:{block:"…"}}（lt_tree/游戏都吃这个形状）"""
+    """把多个盒子条目按材质合并成【规范形状】{boxes:[…],tile:{block:"…"}}（lt_tree/游戏都吃这个形状）
+       ★ 先剥掉条目外层可能带的 [ ]（prism/bevel_edge 逐条生成时带过），再合并；合并结果必须非空"""
     bymat = {}
+    s = ""
     for e in entries:
         if not e: continue
-        mm = re.search(r'tile:\{block:"([^"]+)"\}', e)
-        bm = re.search(r'(bBox|boxes):\[(.*?)\](?=,tile:)', e, re.S)
-        if not (mm and bm): continue
-        bymat.setdefault(mm.group(1), []).extend(re.findall(r'\[I;[-\d,]+\]', bm.group(2)))
+        e = e.strip()
+        if e.startswith("[") and e.endswith("]"):
+            e = e[1:-1]
+        s += e + ","
+    # 用"数组 + 紧邻的 tile:{block:"…"}"配对（能穿透嵌套花括号）；★ 在整个匹配里找 [I;…]（不要先剥掉方括号）
+    for m in re.finditer(r'(?:bBox|boxes):\[.*?\](?=,tile:\{block:"([^"]+)"\})', s, re.S):
+        bymat.setdefault(m.group(1), []).extend(re.findall(r'\[I;[-\d,]+\]', m.group(0)))
     out = []
     for blk, arrs in bymat.items():
         if len(arrs) == 1:
             out.append('{bBox:%s,tile:{block:"%s"}}' % (arrs[0], blk))
         else:
             out.append('{boxes:[%s],tile:{block:"%s"}}' % (",".join(arrs), blk))
-    return ",".join(out)
+    merged = ",".join(out)
+    assert merged, "merge_entries 合并后为空：条目形状不符合 {bBox|boxes:…,tile:{block:…}}"
+    return merged
 
 
 def prism(poly_xz, y0, y1, block="minecraft:quartz_block", ystep=16):
@@ -250,18 +257,27 @@ def tbox_face(coords, offsets, step=16, axis="Y", tile="minecraft:quartz_block")
     return ",".join(out)
 
 
-def bevel_edge(x0, y0, z0, x1, y1, z1, w=2, axis="Y", tile="minecraft:quartz_block"):
-    """45° 倒角条：沿 axis 拆段，每段把"外缘 4 角"向内收 w（等距 ⇒ 45°）"""
+def bevel_edge(x0, y0, z0, x1, y1, z1, w=2, axis="Y", tile="minecraft:quartz_block", sides="EWNS"):
+    """45° 倒角条（真斜切：顶面四边的角同时向内收 w 并下降 w）
+       · 属"非竖直拉伸件"（有 Y 偏移），因此不适用"同竖边 U/D 一致"规则；靠共面检查
+       · 仍然只向内偏移（X/Z 朝盒内、Y 朝下减小）"""
     out = []
-    for s in range(y0 if axis == "Y" else z0, (y1 if axis == "Y" else z1), 16):
-        e = min(s + 16, y1 if axis == "Y" else z1)
-        coords = [x0, s if axis == "Y" else y0, z0, x1, e if axis == "Y" else y1, z1]
-        if axis == "Y": coords = [x0, s, z0, x1, e, z1]
-        offs = [("EUN", "X", -w), ("EUS", "X", -w), ("EUN", "Z", -w), ("EDN", "Z", -w),
-                ("WUN", "X", w), ("WUS", "X", w), ("WUS", "Z", -w), ("WDS", "Z", w)]
-        arr = lt_tbox.encode(coords, _inward(coords, offs))
+    ylo, yhi = (y0, y1) if axis == "Y" else (z0, z1)
+    for s in range(ylo, yhi, 16):
+        e = min(s + 16, yhi)
+        coords = [x0, s, z0, x1, e, z1] if axis == "Y" else [x0, y0, s, x1, y1, e]
+        offs = []
+        if "E" in sides:                                   # 东侧两条竖边：顶角 X -w、Y -w
+            offs += [("EUN", "X", -w), ("EUN", "Y", -w), ("EUS", "X", -w), ("EUS", "Y", -w)]
+        if "W" in sides:
+            offs += [("WUN", "X", w), ("WUN", "Y", -w), ("WUS", "X", w), ("WUS", "Y", -w)]
+        if "N" in sides:
+            offs += [("EUN", "Z", w), ("EUN", "Y", -w), ("WUN", "Z", w), ("WUN", "Y", -w)]
+        if "S" in sides:
+            offs += [("EUS", "Z", -w), ("EUS", "Y", -w), ("WUS", "Z", -w), ("WUS", "Y", -w)]
+        arr = lt_tbox.encode(coords, offs)
         out.append('[{%s:[I;%s],tile:{block:"%s"}}]' % ("bBox", ",".join(map(str, arr)), tile))
-    return ",".join(out)
+    return merge_entries(out)
 
 
 def _rects(txt):
