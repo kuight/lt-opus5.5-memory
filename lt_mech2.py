@@ -214,8 +214,10 @@ def prism(poly_xz, y0, y1, block="minecraft:quartz_block", ystep=16, band=None):
                         ax = x0 if sx == "min" else x1
                         az = z0 if sz == "min" else z1
                         tx, tz = min(piece, key=lambda q: (q[0] - ax) ** 2 + (q[1] - az) ** 2)
-                        dx = int(round(tx)) - ax
-                        dz = int(round(tz)) - az
+                        if band is not None:
+                            tx, tz = _snap_to_band(tx, tz, band[0], band[1], band[2])
+                        dx = tx - ax
+                        dz = tz - az
                         dx = min(0, dx) if sx == "max" else max(0, dx)
                         dz = min(0, dz) if sz == "max" else max(0, dz)
                         if dx or dz:
@@ -419,3 +421,61 @@ if __name__ == "__main__":
     res = [_cmp("mech2_E2.txt", "probe_E2.txt"), _cmp("mech2_F2.txt", "probe_F2.txt"),
            _cmp("mech2_J2.txt", "probe_J2.txt"), _cmp("mech2_H2b.txt", "probe_H2b.txt")]
     print("   汇总：%s" % ("全部等价 ✔" if all(res) else "有差异（见上）"))
+
+def _snap_to_band(x, z, rin, rout, tol=0.5):
+    """把浮点顶点吸附成【落在环带内的整点】（先试最近整点，不行就在 ±2px 邻域里找最近的合规点）"""
+    bx, bz = int(round(x)), int(round(z))
+    if rin - tol <= math.hypot(bx, bz) <= rout + tol:
+        return (bx, bz)
+    best = None
+    for dx in range(-2, 3):
+        for dz in range(-2, 3):
+            nx, nz = bx + dx, bz + dz
+            r = math.hypot(nx, nz)
+            if rin - tol <= r <= rout + tol:
+                d = (nx - x) ** 2 + (nz - z) ** 2
+                if best is None or d < best[0]:
+                    best = (d, nx, nz)
+    return (best[1], best[2]) if best else (bx, bz)
+
+
+def arc_wall_quad(R, thick, a0, a1, height, seg, block="minecraft:quartz_block", yseg=16):
+    """H6 思路：每段在俯视图上就是【一个四边形】（内外弧上两端的 4 个点）
+       · 顶点吸附到环带内整点，且【相邻段共用同一组顶点】=> 共享边完全重合、无缝
+       · 不按水平方块格裁切；只在高度方向每 yseg 分一段"""
+    angs = [math.radians(a0 + (a1 - a0) * k / seg) for k in range(seg + 1)]
+    outer = [_snap_to_band(R * math.cos(t), R * math.sin(t), R - thick, R) for t in angs]
+    inner = [_snap_to_band((R - thick) * math.cos(t), (R - thick) * math.sin(t), R - thick, R) for t in angs]
+    entries = []
+    for k in range(seg):
+        quad = [outer[k], outer[k + 1], inner[k + 1], inner[k]]
+        xs = [q[0] for q in quad]
+        zs = [q[1] for q in quad]
+        x0, x1 = min(xs), max(xs)
+        z0, z1 = min(zs), max(zs)
+        if x1 <= x0:
+            x1 = x0 + 1
+        if z1 <= z0:
+            z1 = z0 + 1
+        offs = []
+        for sx in ("min", "max"):
+            for sz in ("min", "max"):
+                ax = x0 if sx == "min" else x1
+                az = z0 if sz == "min" else z1
+                tx, tz = min(quad, key=lambda q: (q[0] - ax) ** 2 + (q[1] - az) ** 2)
+                dx = tx - ax
+                dz = tz - az
+                dx = min(0, dx) if sx == "max" else max(0, dx)
+                dz = min(0, dz) if sz == "max" else max(0, dz)
+                if dx or dz:
+                    for sy in ("min", "max"):
+                        c = CS8[(sx, sy, sz)]
+                        if dx:
+                            offs.append((c, "X", dx))
+                        if dz:
+                            offs.append((c, "Z", dz))
+        for ys in range(0, height, yseg):
+            ye = min(ys + yseg, height)
+            arr = lt_tbox.encode([x0, ys, z0, x1, ye, z1], offs)
+            entries.append('[{%s:[I;%s],tile:{block:"%s"}}]' % ("bBox", ",".join(map(str, arr)), block))
+    return merge_entries(entries)

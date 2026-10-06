@@ -84,6 +84,7 @@ def check(path, arc=None):
                         issues.append("盒 %s 竖边 %s/%s 的 %s 偏移不一致（%d vs %d）"
                                       % (a[:6], cu, cd, ax, off.get((cu, ax), 0), off.get((cd, ax), 0)))
         polys.append(pts)
+    issues.extend(check_shared_edges(polys))
     mx = avg = 0.0
     if arc:
         R, th, a0, a1, h = arc
@@ -152,6 +153,41 @@ def check(path, arc=None):
     return len(arrs), mx, avg, len(issues)
 
 
+def check_shared_edges(polys):
+    """共享边/竖缝检查：
+       ① 同一 (x,z) 竖线上的各高度段必须首尾相接 —— 有缝或重叠报问题
+       ② 分属不同盒子的两条竖线若相距 <0.75px 且高度区间相交，则必须完全重合 —— 否则是缝"""
+    issues = []
+    lines = {}
+    for bi, pts in enumerate(polys):
+        for pair in (("WDN", "WUN"), ("EDN", "EUN"), ("WDS", "WUS"), ("EDS", "EUS")):
+            a, b = pts[pair[0]], pts[pair[1]]
+            if abs(a[0] - b[0]) < 1e-6 and abs(a[2] - b[2]) < 1e-6:
+                key = (round(a[0], 6), round(a[2], 6))
+                lines.setdefault(key, []).append((round(a[1], 6), round(b[1], 6), bi))
+    for key, segs in lines.items():
+        if len(segs) < 2:
+            continue
+        segs = sorted(set((a, b) for (a, b, _bi) in segs))    # 同段去重：相邻盒共享同一条边是正常的
+        for i in range(len(segs) - 1):
+            if abs(segs[i][1] - segs[i + 1][0]) > 0.01:
+                issues.append("竖线 (%.1f,%.1f) 的段 [%.1f,%.1f] 与 [%.1f,%.1f] %s"
+                              % (key[0], key[1], segs[i][0], segs[i][1], segs[i + 1][0], segs[i + 1][1],
+                                 "有缝" if segs[i][1] < segs[i + 1][0] else "重叠"))
+    keys = sorted(lines.keys())
+    for i in range(len(keys)):
+        for j in range(i + 1, len(keys)):
+            k1, k2 = keys[i], keys[j]
+            dd = math.hypot(k1[0] - k2[0], k1[1] - k2[1])
+            if dd > 0.75 or dd < 1e-6:
+                continue
+            ov = any(min(s1[1], s2[1]) - max(s1[0], s2[0]) > 0.01
+                     for s1 in lines[k1] for s2 in lines[k2])
+            if ov:
+                issues.append("两条竖线 (%.2f,%.2f) 与 (%.2f,%.2f) 相距 %.2fpx 却未重合（疑似缝）"
+                              % (k1[0], k1[1], k2[0], k2[1], dd))
+    return issues
+
 if __name__ == "__main__":
     p = sys.argv[1]
     arc = None
@@ -160,3 +196,4 @@ if __name__ == "__main__":
         arc = (R, th, a0, a1, h)
     n, mx, avg, ni = check(p, arc)
     sys.exit(1 if ni > 0 else 0)
+

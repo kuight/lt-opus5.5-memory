@@ -59,7 +59,8 @@
 | probe_I.txt | ✓✓⚠（11 分量旧格式→警告） | **移出可交付** | — |
 | probe_H/H2/H3/H2b/H3b | H/H2/H3 ✗（越界）；H2b/H3b 几何 ✗（232 问题） | **几何反例夹具（不交付）** | H2b/H3b：鳞片歪墙、曲面没做成 |
 | probe_E.txt | ✗（时间轴 224） | **崩溃夹具（不交付）** | — |
-| probe_H4.txt / probe_H5.txt | **✗ lt_geom 未过**（32 角点越环带、最大偏差 2.35px / 平均 0.40px；lt_root ✓ lt_tree ✓） | **待修（不交付）** | 待测（修好后才能测） |
+| probe_H4c.txt / probe_H6.txt / probe_H5m.txt | root ✓ tree ✓ **geom ✗**（H6/H5m：64 盒、3763/3764 B、越界 0、共享边 0、**最大偏差 1.36px**/平均 0.41；H4c：208 盒、12525 B、越界 0、共享边 0、**2.35px**/0.40） | **待修（不交付）** | 待设计方决定门槛后测 |
+| probe_H4.txt / probe_H5.txt | root ✓ tree ✓ **geom ✗**（208 盒；越界 8 盒=32 角点；最大 2.35px/平均 0.40px） | **待修（不交付）** | — |
 | density_test.txt | ✓✓✓ | 可交付 | 开 50 / 关 100+ fps（密度 5.4 盒/格） |
 ## 说明
 - `nexus_lab.txt` / `neon_tower.txt` / `neon_city.txt` / `ramen_shop.txt` / `cyber_lab.txt` 等大蓝图**不入库**（脚本可重新生成）。
