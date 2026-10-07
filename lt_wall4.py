@@ -13,8 +13,8 @@ import lt_colors
 VAR = sys.argv[1].upper() if len(sys.argv) > 1 else ""
 assert VAR in ("M", "H"), "用法: python lt_wall4.py M|H [A|B]"
 STYLE = sys.argv[2].upper() if len(sys.argv) > 2 else "A"
-assert STYLE in ("A", "B"), "用法: python lt_wall4.py M|H [A|B]"
-SUF = "" if STYLE == "A" else "_B"
+assert STYLE in ("A", "B", "N"), "用法: python lt_wall4.py M|H [A|B]"
+SUF = "" if STYLE == "A" else "_" + STYLE
 if not lt_colors._P:
     lt_colors._load()
 S, GL, TR = "solid", "glow", "trans"
@@ -47,6 +47,17 @@ if STYLE == "B":   # 风格 B 亮白硬科幻
         "equip": ("#7E8893", S), "cable": ("#1E242C", S), "signbd": ("#F7F9FB", S),
         "glowc": ("#9FF3FF", GL), "glowm": ("#D13A2A", S), "pane": ("#9FF3FF", TR),
     }
+if STYLE == "N":   # 风格 N 民生夜读版（A 提亮一档 + 暖窗）
+    SPEC = {
+        "panel": ("#3A424D", S), "rib": ("#5C6774", S), "groove": ("#00E5FF", GL),
+        "hi": ("#FFB347", GL), "base": ("#1E2329", S), "under": ("#4A5462", S),
+        "door": ("#2A3038", S), "clamp": ("#7A8594", S), "cyan": ("#00E5FF", GL),
+        "red": ("#FF2A6D", GL), "quartz": ("#00E5FF", GL),
+        "equip": ("#4E5864", S), "cable": ("#0E1013", S), "signbd": ("#15181C", S),
+        "glowc": ("#00E5FF", GL), "glowm": ("#FF2A6D", GL), "pane": ("#FFB347", TR),
+        "glowa": ("#FFB347", GL),
+    }
+SPEC.setdefault("glowa", SPEC["glowc"])
 VARMAT = {k: pick(h, kd)[0] for k, (h, kd) in SPEC.items()}
 
 ZHONG = ["...#...", "#######", "#..#..#", "#..#..#", "#######",
@@ -97,7 +108,7 @@ def retro(fill):
         for r, row in enumerate(gl):
             for c, ch in enumerate(row):
                 if ch == "#":
-                    fill("glowm", 42 + c, 43 + c, ytop - 1 - r, ytop - r, 18, 19)
+                    fill("glowm", 48 - c, 49 - c, ytop - 1 - r, ytop - r, 18, 19)
     PARTS.append("竖挂招牌 中电（板 11×25px，字 7×9px，青色边框）")
     # 悬垂电缆 1：挂钩 x9 / x89，y78，下垂 8px，n20..22
     catenary(fill, 9, 89, 78, 8, 20)
@@ -112,19 +123,24 @@ def retro(fill):
         disc(fill, "equip", cx, 9, 5.0, 18, 44)
         disc(fill, "iron", cx, 9, 6.0, 24, 26)
         disc(fill, "iron", cx, 9, 6.0, 36, 38)
-        disc(fill, "glowm", cx, 9, 5.4, 31, 32)
+        disc(fill, "glowm", cx, 9, 5.4, 30 if STYLE == "B" else 31, 34 if STYLE == "B" else 32)
         disc(fill, "equip", cx, 9, 3.5, 44, 46)
         fill("iron", cx - 1, cx + 1, 46, 52, 8, 10)
     PARTS.append("储能罐 2（箍环 4、警示环 2、顶管 2）")
     # 寄生舱（中格间上部）：舱体 → 窗（内发光 + 半透明青玻璃 + 百叶）→ 檐口 → 霓虹边 → 斜撑
     fill("door", 54, 84, 52, 76, 0, 12)
     fill(None, 60, 78, 58, 70, 9, 12)
-    fill("glowc", 60, 78, 58, 70, 8, 9)
+    fill("glowa", 60, 78, 58, 70, 8, 9)
     fill("pane", 60, 78, 58, 70, 9, 10)
     for y in (61, 64, 67):
         fill("clamp", 59, 79, y, y + 1, 11, 12)
     fill("rib", 53, 85, 76, 78, 0, 13)
-    fill("glowm", 54, 84, 74, 75, 12, 13)
+    if STYLE == "B":   # 警示斜纹 30x5px：红/深灰，45 度，条宽 3px，不发光
+        for x in range(54, 84):
+            for y in range(71, 76):
+                fill("glowm" if ((x + y) // 3) % 2 == 0 else "groove", x, x + 1, y, y + 1, 12, 13)
+    else:
+        fill("glowm", 54, 84, 74, 75, 12, 13)
     for x in (52, 84):
         for i in range(12):
             fill("clamp", x, x + 2, 40 + i, 42 + i, i, i + 2)
