@@ -64,11 +64,15 @@
 | probe_H7.txt / probe_H7b.txt | 三项曾通过；但 **H7b 有墙基顶面缺口** ⇒ **降为参考（不交付）** | 参考 | H7 未解决暗块；H7b 暗块全消失但有缺口 |
 | probe_H4c.txt | ✗（按格裁切：错位缺片，用户判失败；越界 0、共享边 0、最大偏差 2.35px） | **反例夹具（不交付）** | — |
 | density_test.txt | ✓✓✓ | 可交付 | 开 50 / 关 100+ fps（密度 5.4 盒/格） |
+| std_wall2.txt | ✓✓✓（**714 盒 / 30157 B / 12.69×6.00×4.69 格 / 每格 3.74 盒**；平整板面 **42.1%**、倒角翘曲 0.114px；含 1/4 弧转角 + 3 层凹凸 + 3 个设备格间 + 48 颗铆钉；**接缝 `lt_seam` 通过**） | **可交付（标准墙，替代 scale_A / std_wall）** | 待测（见 HANDOFF §6） |
 | std_wall.txt | ✓✓✓（**120 盒 / 4763 B / 8.00×6.00×3.12 格 / 每格 2.5 盒**；含 1/4 弧转角 + 3px 45° 倒角 + 16px 墙基；geom 45 变形盒 0 问题） | **可交付（替代 scale_A）** | 待测（见 HANDOFF §6） |
 
 | patch_geom_env.py | 给 `lt_geom` 加 `LT_COPLANAR_TOL` / `LT_GEOM_COMPOSITE` 两个环境变量开关（默认行为不变）；**作者：设计方** | 无 | — | 2026-10-07 原样保存并运行：**PASS** ✓ |
 | lt_seam.py | 弧直接缝检查（直段端面是否被弧段起始面盖住 / 角点是否正好在接缝面 / 有无盒子横跨）；**作者：设计方** | 无 | — | 2026-10-07 原样保存（未运行，见下） |
-| lt_wall2.py | 标准墙 `std_wall2` 生成器（**作者：设计方**）；自检：平整面 ≥40%、倒角翘曲 ≤1.0px | numpy / lt_tbox / lt_colors | 拟生成 std_wall2.txt | 2026-10-07  |
+| lt_wall2.py | 标准墙 `std_wall2` 生成器（**作者：设计方**）；自检：平整面 ≥40%、倒角翘曲 ≤1.0px | numpy / lt_tbox / lt_colors | `samples/std_wall2.txt` | **2026-10-07：三项全过 + 接缝通过** ✓ |
+
+| patch_wall2_zo.py | `lt_wall2.py` 修订：ZO 12→11（墙前沿 z=0）+ 运行前先删旧 `std_wall2.txt`；**作者：设计方** | 无 | — | 2026-10-07 原样保存并运行：**PASS** ✓ |
+| patch_wall2_fmt.py | `lt_wall2.py` 修订：导出模板 `size` 补 `I;`、`count=根盒子数`；`warp_of` 改为与 `lt_geom` 同一共面口径；**作者：设计方** | 无 | — | 2026-10-07 原样保存并运行：**PASS** ✓ |
 
 ## 说明
 - `nexus_lab.txt` / `neon_tower.txt` / `neon_city.txt` / `ramen_shop.txt` / `cyber_lab.txt` 等大蓝图**不入库**（脚本可重新生成）。

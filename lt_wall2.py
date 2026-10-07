@@ -210,7 +210,7 @@ def warp_of(q, h, mode):
     else:
         f = [(q[0], 0), (q[1], h), (q[2], h), (q[3], 0)]
     p = [(a[0], yy, a[1]) for a, yy in f]
-    return max(dev(*p), dev(p[1], p[2], p[3], p[0]))
+    return max(dev(p[i % 4], p[(i + 1) % 4], p[(i + 2) % 4], p[(i + 3) % 4]) for i in range(4))
 
 
 # 弧段所有元素的 (lo,hi)，用于优化时检查凸性
@@ -411,8 +411,8 @@ for m in order:
 lo = [min(a[i] for _, a in allb) for i in range(3)]
 hi = [max(a[i + 3] for _, a in allb) for i in range(3)]
 assert lo == [0, 0, 0], "导入起点不是 (0,0,0)：%s" % lo
-txt = "{tiles:[%s],min:[I;%d,%d,%d],size:[%d,%d,%d],count:1}" % (
-    ",".join(ents), lo[0], lo[1], lo[2], hi[0] - lo[0], hi[1] - lo[1], hi[2] - lo[2])
+txt = "{tiles:[%s],min:[I;%d,%d,%d],size:[I;%d,%d,%d],count:%d}" % (
+    ",".join(ents), lo[0], lo[1], lo[2], hi[0] - lo[0], hi[1] - lo[1], hi[2] - lo[2], len(allb))
 io.open(OUT, "w", encoding="utf-8").write(txt)
 back = io.open(OUT, encoding="utf-8").read()
 assert back == txt, "读回不一致"
