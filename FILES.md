@@ -64,6 +64,8 @@
 | probe_H7.txt / probe_H7b.txt | 三项曾通过；但 **H7b 有墙基顶面缺口** ⇒ **降为参考（不交付）** | 参考 | H7 未解决暗块；H7b 暗块全消失但有缺口 |
 | probe_H4c.txt | ✗（按格裁切：错位缺片，用户判失败；越界 0、共享边 0、最大偏差 2.35px） | **反例夹具（不交付）** | — |
 | density_test.txt | ✓✓✓ | 可交付 | 开 50 / 关 100+ fps（密度 5.4 盒/格） |
+| std_wall.txt | ✓✓✓（**120 盒 / 4763 B / 8.00×6.00×3.12 格 / 每格 2.5 盒**；含 1/4 弧转角 + 3px 45° 倒角 + 16px 墙基；geom 45 变形盒 0 问题） | **可交付（替代 scale_A）** | 待测（见 HANDOFF §6） |
+
 ## 说明
 - `nexus_lab.txt` / `neon_tower.txt` / `neon_city.txt` / `ramen_shop.txt` / `cyber_lab.txt` 等大蓝图**不入库**（脚本可重新生成）。
 - `lt_src/`、`cc_src/` 反编译源码与各 jar 也不入库（只读参考）。
