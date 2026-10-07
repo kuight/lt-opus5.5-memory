@@ -78,6 +78,8 @@
 
 | lt_s1.py | **超越技术样品 S1「实体光楼」**（黑色投影基座 + 4 层半透明实体光楼板 + 寄生舱/塔架/电缆 + 青粒子；**作者：设计方**） | lt_np / lt_mech2 / lt_colors | `samples/s1_light.txt` | **2026-10-07：lt_root / lt_tree 通过 ✓（无可变形盒，lt_geom / lt_seam 不适用）**；441 根盒 + 2 粒子子结构 = 443 盒 / 11966 B |
 
+| lt_wall4.py | **加装层样品 M/H**（读 `lt_wall2.py` 源码执行；风格 A 配色；ZO 11→22 留 22px 外挑；只在直段加 retrofitting，弧段/接缝几何不变；**作者：设计方**） | lt_wall2（源码）/ lt_colors | `samples/std_wall4_M.txt`、`std_wall4_H.txt` | **待用户实测**（M 836 盒/32946 B，H 1083 盒/38376 B；两组四项门禁全过 ✓） |
+
 ## 说明
 - `nexus_lab.txt` / `neon_tower.txt` / `neon_city.txt` / `ramen_shop.txt` / `cyber_lab.txt` 等大蓝图**不入库**（脚本可重新生成）。
 - `lt_src/`、`cc_src/` 反编译源码与各 jar 也不入库（只读参考）。

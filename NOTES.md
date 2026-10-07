@@ -201,6 +201,13 @@
 **C 中式未来**（719 盒 / 30249 B / 悬浮件 5 盒 PASS / 发光盒 81）：panel #8E2B22→`1:8` #8D2222 差9；rib #B8923A→`11:10` #BB942E 13；groove #FFB347(glow)→`glowing0_9:5` #FFA63F 15；hi #FFD27A(glow)→`glowing0_11:3` #FFDC81 12；base #23272B→`52:8` #282A33 10；under #C9A24A→`11:0` #BBA15E 24；door #2E6E8E→`46:8` #22688D 13；clamp #3A4450→`45:1` #3A4449 7；cyan #3FD0C9(glow)→`glowing0_41:11` #33D1CB 12；red #FFD27A(glow)→`glowing0_11:3` #FFDC81 12；quartz #FFD27A(glow)→`glowing0_11:3` #FFDC81 12。
 （**全部色差 < 40，无 [偏]**；A/B/C 几何与 std_wall2 完全相同，仅材质与悬浮件不同。）
 
+## 2026-10-07 方向修正
+① **S1 v1（实体光楼）用户实测**：**粒子没问题**；但**光楼像玻璃货架/线框** —— 光是 **3px 薄板加亮边、没有体积**，全是**规整薄矩形**，尺度只有 **~12 格** ⇒ **S1 路线暂停**。
+② **Up And Down And All Around**：与 **mcmod 1773 页**描述的 bug 相同，**删 replay 后仍在**，**冲突源未查明** ⇒ **放弃**。
+③ 用户原话：“我感觉这样好像就不好看不酷了，其实我觉得你之前那个wall2就挺酷的，那可能我更想要的是密集高科技、工业设备构成的赛博城市”
+   ⇒ **“无支撑 / 无接缝 / 超薄”的极简超越路线放弃**；**主路线 = Blade Runner 式 retrofitting（设备外挂、内脏穿在外面）**。
+   来源：American Cinematographer《Blade Runner》set design（theasc.com，Ridley Scott / Syd Mead 访谈）。
+
 ## 操作记录
 - **mass_v0 体块粘贴法**（原先写在 HANDOFF §6，本轮移到此处）：把 `mass_v0.schematic` 放进 `.minecraft/config/worldedit/schematics/` → 游戏内 `//schem load mass_v0` → `//paste -o`；若报方块数超限先 `//limit -1`。⚠ **会清空 x -800~-701、z 300~399、y3~255 内的一切**（旧 v1 建筑随之清除，用户已同意不备份）。
 
