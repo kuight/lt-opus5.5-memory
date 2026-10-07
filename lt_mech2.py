@@ -481,3 +481,64 @@ def arc_wall_quad(R, thick, a0, a1, height, seg, block="minecraft:quartz_block",
             arr = lt_tbox.encode([x0, ys, z0, x1, ye, z1], offs)
             entries.append('[{%s:[I;%s],tile:{block:"%s"}}]' % ("bBox", ",".join(map(str, arr)), block))
     return merge_entries(entries)
+
+
+def _facet_boxes(pts_a, pts_b, seg, y0, y1, block, yseg=16):
+    """把每段的四边形 [a[k], a[k+1], b[k+1], b[k]] 变成可变形盒（y0..y1，按 yseg 分段）
+       ★ 四个角改成【双射配对】：四边形 4 顶点与包围盒 4 角【各自按极角排序后一一对应】
+       ★ 包围盒用【吸附后的顶点】取 min/max ⇒ 偏移天然朝内或 0"""
+    entries = []
+    for k in range(seg):
+        quad = [pts_a[k], pts_a[k + 1], pts_b[k + 1], pts_b[k]]
+        xs = [q[0] for q in quad]
+        zs = [q[1] for q in quad]
+        x0, x1 = min(xs), max(xs)
+        z0, z1 = min(zs), max(zs)
+        if x1 <= x0:
+            x1 = x0 + 1
+        if z1 <= z0:
+            z1 = z0 + 1
+        cx, cz = (x0 + x1) / 2.0, (z0 + z1) / 2.0
+        qs = sorted(quad, key=lambda q: math.atan2(q[1] - cz, q[0] - cx))
+        corners = sorted([(x0, z0), (x1, z0), (x1, z1), (x0, z1)],
+                         key=lambda q: math.atan2(q[1] - cz, q[0] - cx))
+        offs = []
+        for (corner, target) in zip(corners, qs):
+            cx2, cz2 = corner
+            dx = int(round(target[0])) - cx2
+            dz = int(round(target[1])) - cz2
+            dx = min(0, dx) if cx2 == x1 else max(0, dx)
+            dz = min(0, dz) if cz2 == z1 else max(0, dz)
+            if dx or dz:
+                for sy in ("min", "max"):
+                    c = CS8[("max" if cx2 == x1 else "min", sy, "max" if cz2 == z1 else "min")]
+                    if dx:
+                        offs.append((c, "X", dx))
+                    if dz:
+                        offs.append((c, "Z", dz))
+        for ys in range(y0, y1, yseg):
+            ye = min(ys + yseg, y1)
+            arr = lt_tbox.encode([x0, ys, z0, x1, ye, z1], offs)
+            entries.append('[{%s:[I;%s],tile:{block:"%s"}}]' % ("bBox", ",".join(map(str, arr)), block))
+    return entries
+
+
+def arc_wall_with_base(R, thick, a0, a1, wallH, seg, baseH=16, extend=2,
+                       wall_block="minecraft:quartz_block", base_block="minecraft:quartz_block", yseg=16):
+    """弧墙 + 墙基（★ 内弧顶点两者共用 ⇒ 墙基顶面必然盖住弧墙底边 ⇒ 无缝）
+       弧墙：R-thick..R；墙基：R-thick..R+extend，高 baseH，弧墙从 baseH 起"""
+    angs = [math.radians(a0 + (a1 - a0) * k / seg) for k in range(seg + 1)]
+    inner = [_snap_to_band((R - thick) * math.cos(t), (R - thick) * math.sin(t), R - thick, R) for t in angs]
+    outer = [_snap_to_band(R * math.cos(t), R * math.sin(t), R - thick, R) for t in angs]
+    bouter = [_snap_to_band((R + extend) * math.cos(t), (R + extend) * math.sin(t), R - thick, R + extend) for t in angs]
+    ent = _facet_boxes(bouter, inner, seg, 0, baseH, base_block, yseg)
+    ent += _facet_boxes(outer, inner, seg, baseH, baseH + wallH, wall_block, yseg)
+    return merge_entries(ent)
+
+
+def arc_wall_quad(R, thick, a0, a1, height, seg, block="minecraft:quartz_block", yseg=16):
+    """（保留旧签名）整段四边形弧墙，不做墙基 —— 内部走 _facet_boxes（双射配对）"""
+    angs = [math.radians(a0 + (a1 - a0) * k / seg) for k in range(seg + 1)]
+    inner = [_snap_to_band((R - thick) * math.cos(t), (R - thick) * math.sin(t), R - thick, R) for t in angs]
+    outer = [_snap_to_band(R * math.cos(t), R * math.sin(t), R - thick, R) for t in angs]
+    return merge_entries(_facet_boxes(outer, inner, seg, 0, height, block, yseg))

@@ -91,7 +91,7 @@ def check(path, arc=None):
         ymin = arc[5] if len(arc) > 5 else 0.0
         import random
         random.seed(7)
-        n = 2000
+        n = int(arc[6]) if len(arc) > 7 else 40000   # ★ 默认密采样 4 万点
         tot = 0.0
         for i in range(n):
             t = math.radians(a0 + (a1 - a0) * random.random())
@@ -153,7 +153,7 @@ def check(path, arc=None):
              sum(1 for x in issues if "竖边" not in x and "不共面" not in x)))
     for x in issues[:12]:
         print("   [问题] " + x)
-    if arc: print("   偏差：最大 %.2f px，平均 %.2f px（目标弧面取 2000 点）" % (mx, avg))
+    if arc: print("   偏差：最大 %.2f px，平均 %.2f px（目标弧面取 %d 点）" % (mx, avg, int(arc[6]) if len(arc) > 7 else 40000))
     return len(arrs), mx, avg, len(issues)
 
 
@@ -191,6 +191,43 @@ def check_shared_edges(polys):
                 issues.append("两条竖线 (%.2f,%.2f) 与 (%.2f,%.2f) 相距 %.2fpx 却未重合（疑似缝）"
                               % (k1[0], k1[1], k2[0], k2[1], dd))
     return issues
+
+def point_in_quad(px, pz, q):
+    sign = None
+    for k in range(4):
+        a, b = q[k], q[(k + 1) % 4]
+        cr = (b[0] - a[0]) * (pz - a[1]) - (b[1] - a[1]) * (px - a[0])
+        if abs(cr) < 1e-9:
+            continue
+        cur = cr > 0
+        if sign is None:
+            sign = cur
+        elif sign != cur:
+            return False
+    return True
+
+
+def check_base_coverage(polys, ybase):
+    """弧墙底边的投影必须完全落在【墙基顶面】以内（俯视覆盖关系）
+       墙基顶面 = 盒子满足 WUN[1] == ybase；弧墙底行 = WDN[1] == ybase 且 WUN[1] > ybase"""
+    tops, bots = [], []
+    for pts in polys:
+        q = [(pts["WDN"][0], pts["WDN"][2]), (pts["EDN"][0], pts["EDN"][2]),
+             (pts["EDS"][0], pts["EDS"][2]), (pts["WDS"][0], pts["WDS"][2])]
+        if abs(pts["WUN"][1] - ybase) < 0.001 and abs(pts["WDN"][1] - ybase) < 0.001:
+            tops.append(q)
+        elif abs(pts["WDN"][1] - ybase) < 0.001 and pts["WUN"][1] > ybase + 0.001:
+            bots.append(q)
+    miss = 0
+    for q in bots:
+        for m in range(4):
+            a, b = q[m], q[(m + 1) % 4]
+            for t in (0.0, 0.25, 0.5, 0.75, 1.0):
+                px, pz = a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t
+                if not any(point_in_quad(px, pz, tq) for tq in tops):
+                    miss += 1
+    return miss, len(bots), len(tops)
+
 
 if __name__ == "__main__":
     p = sys.argv[1]
