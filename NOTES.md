@@ -117,7 +117,7 @@
 23. **FCB 发光小方块 = 只发光不照明、不漏光**（2026-10-06 用户截图确认：FCB 发光细条贴墙，**墙面未被照亮**）⇒ **照明一律用 `light` 结构**；`lt_ramen.py` 的 **LEAKFIX 退役**（代码先保留，但**不再要求漏光检查**）。旁证：1.5.87 对小方块自发光做体积加权（`*= getPercentVolume`），1px 级亮度≈1。
 24. facing 序 = DOWN0 UP1 NORTH2 SOUTH3 WEST4 EAST5；粒子默认 `facing:1`。
 25. **可变形盒的角偏移"越出声明 AABB"有风险**：`LittleTransformableBox.setBounds(:1596-1623)` 会把几何包围盒**夹回**声明范围（`minX = max(minX, oldMinX)`、`maxX = min(maxX, oldMaxX)`）；保存时 6 坐标就是该 AABB（`:481-490`），`getBox` 也只按 AABB 建碰撞盒（`:216-221`）⇒ 面可能画到 AABB 外，而**记账/按格切分/碰撞只认 AABB** ⇒ 不一致。**规则：角偏移只写"向内或 0"**（`lt_tree` 已加检查，越界报 `[问题]`）。H2/H3（有 +1/-1/-8 等向外偏移）现已被标为问题，改用 **H2b/H3b**。
-26. **跨格可变形盒的切分**：放置时走 `PlacePreview.split(...)`（`Placement.java:296` `pp.split(...)`）按格拆开。❗"切开处会不会有缝/丢面"**没有逐行确认**（因此 H2b/H3b 主动**按格高拆成 4 段**，规避风险）。
+26. **水平方向不拆**：整段四边形（H6 已实测，墙顶平滑）；按格裁切的 H4c 实测**错位缺片**，**禁用**。跨格时只按高度分段。
 
 ## 2026-10-06 设计方对话归档（本轮新增，全部入库）
 
@@ -158,6 +158,11 @@
 - **卡点判断**：整数角点**无法贴合真圆**——吸附到整点必然带来 ≤0.7px 的径向误差，16 段的弦高差再叠加 0.15px，所以**"最大偏差 ≤1px"这个门槛对整数网格弧墙偏严**；H6 已经比 H4c 好 1px（且盒数只有 1/3、无缝、共享边检查 0 条 ✓）。**请设计方定**：是放宽到 ≤1.5px、还是改用更细网格/允许非整数角(需要另想办法)、还是接受 H6 + 加厚壳到 3~4px 让误差相对减小。
 - `lt_geom` 本轮已补：**纯边界距离度量**（能测出弦-弧差，不再出现假的 0.00）、**角点环带检查**、**`check_shared_edges`**（同竖线上高度段首尾相接 + 相邻盒竖线必须完全重合；同段去重避免误报 ✓）。
 
+27. **可变形盒斜面贴地时会出"对齐格线的硬边暗块"**（2026-10-07 用户实测）：H6/H5m 最下面一格有偏深竖长方形暗块、边界对齐方块格线，开不开光影都有；**关平滑光照→消失**，**悬空放置→也消失**。成因（源码）：LT 的平滑光照走 Forge 的 vanilla AO 管线（`RenderingThread.java:254-286` → `cc_src/.../CreativeModelPipeline.java:86-118`）：`:86-94` 反射构造原版 `BlockModelRenderer$AmbientOcclusionFace`（该类还被 LT coremod 改写，`LittleTilesTransformer.java:412-419`），`:109-116` 用 vanilla `VertexLighterSmoothAo` 并 `setWorld/setState/setBlockPos(pos)/updateBlockInfo()`（**按方块位置 + 按面朝向**取 AO），并强制"非满块"。⇒ 可变形盒**跨格时每格各自算一次 AO**、相邻格之间不混合 ⇒ 贴地处由地面方块产生的遮蔽变成**硬边暗块**。
+28. **更细网格**：grid 尺寸表由 `LittleGridContext.loadGrid(min, defaultGrid, scale, multiplier)`（`LittleGridContext.java:35-50`）生成，尺寸序列 = `min × multiplier^n`（n < scale）；`get(int)`（`:61-70`）**只认表内尺寸，否则抛异常**；蓝图 `grid` 键经 `get(NBTTagCompound)`（`:76-81`）读取，缺省回落 16（`:83-87` getOverall）。默认 `defaultSize = 16`（`LittleTilesConfig.java:111`、`LittleTiles.java:228` 配置范围 1..MAX）。⇒ **1/32 只要配置表里有 32 就能用**（如 min=1, multiplier=2, scale≥6）；**可变形盒的角偏移是 grid 单位的 short** ⇒ 网格变细后偏移自动变细；**与 1/16 混放由 LT 的上下文转换支持**（`LittleActionPlaceAbsolute.java:129/175`、`LittleActionSaw.java:70/93`、`LittleActionDestroyBoxes.java:162/223` 都在比较 `context.size` 后转换）。
+- **门槛调整（2026-10-07 设计方定）**：整数网格弧墙的弧面偏差门槛改为 **≤1.5px**，最终以**游戏观感**为准 ⇒ **H6 / H5m 达标 ✓**。
+- **H6 的 1.36px 出现在哪**：细化采样（4 万点）实测 **最大 1.474px**，位置 = **角度 44.33°（第 7 段、段内 88%）内弧**，盒 #28 `[89,0,80,99,16,91]`，其角偏移达 **±8/9px** ⇒ **薄片在"最近顶点映射"上配错**（把面拉歪）；误差构成 = 弦高差 **0.154px**（16 段 R=128 的理论值）+ 顶点吸附 ≤0.7px + **该薄片的映射错配**（主因，最大 ~1.3px）。
+- **H7 / H7b（墙基方案）**：H6 弧墙 + 沿弧线、外凸 2px 的正交墙基（深色 FCB **`flatcoloredblocks:flatcoloredblock80:1`**），墙基高 **4px**(H7) / **16px**(H7b)，弧墙从墙基顶面起。两份**三项门禁全过** ✓（80 盒、4708/4741 B、最大偏差 1.36px）。等用户实测哪个高度能消掉/减轻墙根暗块。
 ## 操作记录
 - **mass_v0 体块粘贴法**（原先写在 HANDOFF §6，本轮移到此处）：把 `mass_v0.schematic` 放进 `.minecraft/config/worldedit/schematics/` → 游戏内 `//schem load mass_v0` → `//paste -o`；若报方块数超限先 `//limit -1`。⚠ **会清空 x -800~-701、z 300~399、y3~255 内的一切**（旧 v1 建筑随之清除，用户已同意不备份）。
 

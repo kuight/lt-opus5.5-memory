@@ -216,6 +216,8 @@ def prism(poly_xz, y0, y1, block="minecraft:quartz_block", ystep=16, band=None):
                         tx, tz = min(piece, key=lambda q: (q[0] - ax) ** 2 + (q[1] - az) ** 2)
                         if band is not None:
                             tx, tz = _snap_to_band(tx, tz, band[0], band[1], band[2])
+                        else:
+                            tx, tz = int(round(tx)), int(round(tz))     # ★ band=None 也要取整（否则 float 进入 encode 报错）
                         dx = tx - ax
                         dz = tz - az
                         dx = min(0, dx) if sx == "max" else max(0, dx)
