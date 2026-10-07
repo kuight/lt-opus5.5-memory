@@ -11,7 +11,10 @@ sys.path.insert(0, os.getcwd())
 import lt_colors
 
 VAR = sys.argv[1].upper() if len(sys.argv) > 1 else ""
-assert VAR in ("M", "H"), "用法: python lt_wall4.py M|H"
+assert VAR in ("M", "H"), "用法: python lt_wall4.py M|H [A|B]"
+STYLE = sys.argv[2].upper() if len(sys.argv) > 2 else "A"
+assert STYLE in ("A", "B"), "用法: python lt_wall4.py M|H [A|B]"
+SUF = "" if STYLE == "A" else "_B"
 if not lt_colors._P:
     lt_colors._load()
 S, GL, TR = "solid", "glow", "trans"
@@ -35,6 +38,15 @@ SPEC = {  # 风格 A（与 lt_wall3 A 相同）+ 加装层新材质
     "equip": ("#2A3038", S), "cable": ("#0E1013", S), "signbd": ("#15181C", S),
     "glowc": ("#00E5FF", GL), "glowm": ("#FF2A6D", GL), "pane": ("#00E5FF", TR),
 }
+if STYLE == "B":   # 风格 B 亮白硬科幻
+    SPEC = {
+        "panel": ("#EEF1F4", S), "rib": ("#C2C9D1", S), "groove": ("#1E242C", S),
+        "hi": ("#F7F9FB", S), "base": ("#4A525C", S), "under": ("#9AA3AD", S),
+        "door": ("#C8CED4", S), "clamp": ("#6E7884", S), "cyan": ("#9FF3FF", GL),
+        "red": ("#D13A2A", S), "quartz": ("#F7F9FB", S),
+        "equip": ("#7E8893", S), "cable": ("#1E242C", S), "signbd": ("#F7F9FB", S),
+        "glowc": ("#9FF3FF", GL), "glowm": ("#D13A2A", S), "pane": ("#9FF3FF", TR),
+    }
 VARMAT = {k: pick(h, kd)[0] for k, (h, kd) in SPEC.items()}
 
 ZHONG = ["...#...", "#######", "#..#..#", "#..#..#", "#######",
@@ -136,7 +148,7 @@ def rep(a, b):
     src = src.replace(a, b)
 
 
-rep('OUT = "std_wall2.txt"', 'OUT = "std_wall4_%s.txt" % VAR')
+rep('OUT = "std_wall2.txt"', 'OUT = "std_wall4_%s%s.txt"' % (VAR, SUF))
 rep('ZO, CX, R0 = 11, 128, 64', 'ZO, CX, R0 = %d, 128, 64' % NMAX)
 rep('MAT["quartz"] = "minecraft:quartz_block"\n',
     'MAT["quartz"] = "minecraft:quartz_block"\nMAT.update(VARMAT)\n')
@@ -151,13 +163,23 @@ exec(compile(src, "lt_wall2.py", "exec"), g)
 allb = g["allb"]
 nglow = sum(1 for m, _ in allb if "glowing" in m)
 ntrans = sum(1 for m, _ in allb if "transparent" in m or "trans" in m.split(":")[-1])
-print("== 加装层 %s：%s" % (VAR, "中密度" if VAR == "M" else "高密度"))
+print("== 加装层 %s%s：%s，风格 %s" % (VAR, SUF, "中密度" if VAR == "M" else "高密度", STYLE))
 for p in PARTS:
     print("   + " + p)
 print("   盒子 %d，发光盒 %d，半透明盒 %d，字节 %d" % (len(allb), nglow, ntrans, g["nbytes"]))
-print("   墙面在 z=%d（ZO 11→%d，外挑空间 %dpx）；对照组 = samples/std_wall3_A.txt" % (NMAX, NMAX, NMAX))
+print("   墙面在 z=%d（ZO 11→%d，外挑空间 %dpx）；风格 %s；对照组 = samples/std_wall3_%s.txt" % (NMAX, NMAX, NMAX, STYLE, STYLE))
 print("   材质映射（目标色 → 方块 → 实际色值，色差>40 标 [偏]）：")
 for k in ("equip", "cable", "signbd", "glowc", "glowm", "pane"):
     h, kd = SPEC[k]
     n, act, d = pick(h, kd)
     print("     %-7s %s %-5s → %s  实际 %s  色差 %.0f%s" % (k, h, kd, n, act, d, "  [偏]" if d > 40 else ""))
+print("   全部材质映射（风格 %s）：" % STYLE)
+for _k, (_h, _kd) in SPEC.items():
+    _n, _act, _d = pick(_h, _kd)
+    print("     %-7s %s %-5s → %s  实际 %s  色差 %.0f%s" % (_k, _h, _kd, _n, _act, _d, "  [偏]" if _d > 40 else ""))
+_seen = {}
+for _k, _v in VARMAT.items():
+    _seen.setdefault(_v, []).append(_k)
+for _v, _ks in sorted(_seen.items()):
+    if len(_ks) > 1:
+        print("   [同块] %s → %s（信息，不算错）" % ("/".join(sorted(_ks)), _v))
