@@ -188,6 +188,16 @@
 - **手写蓝图导出模板必须**：`min:[I;…]` 与 **`size:[I;…]` 都带 `I;` 前缀**；**`count` = 根盒子数**（§3.1），**不能写 1**。（教训：`size` 漏 `I;` 会被读成 `[3,96,75]`，`count:1` 会被 lt_tree 判问题。）
 - **共面 / 翘曲统一口径**：**“4 个点各自到『另三点所在平面』的距离取最大”**（与 `lt_geom` 一致，不受角点起始顺序影响）；生成器自算的翘曲必须与 `lt_geom` 实测同口径，否则建议容差会偏紧。
 
+## 风格样品 A/B/C 色值实测（2026-10-07，`lt_wall3.py` 打印原样）
+**诊断：现版 std_wall2 配色实际落点**（FCB 是 6×6×6 调色板；均无 [偏]）：panel #D8DEE4→`flatcoloredblock80:8` 实际 #E8E8E8 差19；rib #AEB6BE→`80:6` #BBBBBB 14；groove #3A4450→`45:1` #3A4449 7；hi #F0F4F7→`80:9` #FFFFFF 20；base #4A5562→`47:10` #4C5560 3；under #8E98A2→`45:5` #8398A4 11；door #C4CCD4→`80:7` #D1D1D1 14；clamp #6E7884→`50:4` #70798D 9；cyan #2E6E8E→`46:8` #22688D 13；red #C8372D→`1:11` #D13333 12。
+
+**A 赛博朋克**（719 盒 / 30178 B / 悬浮件 5 盒 PASS / 发光盒 81）：panel #262C34→`47:8` #282D33 差2；rib #1A1F26→`50:10` #192133 13；groove #00E5FF(glow)→`glowing0_44:15` #00D7FF 14；hi #FF2A6D(glow)→`glowing0_79:5` #FF3F70 21；base #121519→`51:4` #0C1833 27；under #3A4450→`45:1` #3A4449 7；door #313843→`52:9` #3A3C49 12；clamp #4A5260→`50:2` #4C5260 2；cyan #00E5FF(glow)→`glowing0_44:15` #00D7FF 14；red #FF2A6D(glow)→`glowing0_79:5` #FF3F70 21；quartz #00E5FF(glow)→`glowing0_44:15` #00D7FF 14。
+
+**B 硬科幻亮白**（716 盒 / 30157 B / 悬浮件 2 盒 PASS / 发光盒 5）：panel #EEF1F4→`80:8` #E8E8E8 差16；rib #C2C9D1→`80:7` #D1D1D1 17；groove #1E242C→`48:2` #192533 9；hi #F7F9FB→`80:9` #FFFFFF 11；base #4A525C→`50:2` #4C5260 4；under #9AA3AD→`80:5` #A4A4A4 13；door #DCE1E6→`80:8` #E8E8E8 14；clamp #6E7884→`50:4` #70798D 9；cyan #9FF3FF(glow)→`glowing0_43:11` #81EBFF 31；red #D13A2A→`1:11` #D13333 11；quartz #F7F9FB→`80:9` #FFFFFF 11。
+
+**C 中式未来**（719 盒 / 30249 B / 悬浮件 5 盒 PASS / 发光盒 81）：panel #8E2B22→`1:8` #8D2222 差9；rib #B8923A→`11:10` #BB942E 13；groove #FFB347(glow)→`glowing0_9:5` #FFA63F 15；hi #FFD27A(glow)→`glowing0_11:3` #FFDC81 12；base #23272B→`52:8` #282A33 10；under #C9A24A→`11:0` #BBA15E 24；door #2E6E8E→`46:8` #22688D 13；clamp #3A4450→`45:1` #3A4449 7；cyan #3FD0C9(glow)→`glowing0_41:11` #33D1CB 12；red #FFD27A(glow)→`glowing0_11:3` #FFDC81 12；quartz #FFD27A(glow)→`glowing0_11:3` #FFDC81 12。
+（**全部色差 < 40，无 [偏]**；A/B/C 几何与 std_wall2 完全相同，仅材质与悬浮件不同。）
+
 ## 操作记录
 - **mass_v0 体块粘贴法**（原先写在 HANDOFF §6，本轮移到此处）：把 `mass_v0.schematic` 放进 `.minecraft/config/worldedit/schematics/` → 游戏内 `//schem load mass_v0` → `//paste -o`；若报方块数超限先 `//limit -1`。⚠ **会清空 x -800~-701、z 300~399、y3~255 内的一切**（旧 v1 建筑随之清除，用户已同意不备份）。
 
