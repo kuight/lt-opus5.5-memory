@@ -86,6 +86,8 @@
 
 | patch_wall4_glow.py | `lt_wall4.py` 第 4 版补丁：**B 警示改发光红**（`glowm`/`red` solid #D13A2A → glow **#FF3B2F**）+ 修 N 对照组提示（改指 `std_wall3_A`）；**作者：设计方** | 无 | — | 2026-10-07 原样保存并运行：**PASS** ✓ |
 
+| lt_noodle1.py | **合成蛋白面馆 一期待测件**（体块 + 剖面）：吊脚架空层（9 柱 + 6 大梁 + 24 隅撑）/ 中层面摊（临街整面敞开 + 柜台 + 暖光带 + 高凳 ×4 + 腰檐）/ 上层圆角住舱（R=32px 弧墙 ×4 + 腰檐→顶檐）；斜面只用 Y 偏移可变形盒；CLI 无参数，跑完打印盒数/字节/尺寸/占用格/材质表；**作者：设计方** | lt_colors / lt_root / lt_tbox / lt_mech2 | `samples/noodle1.txt`、`noodle1_top.png`、`noodle1_front.png` | **待用户实测**（2026-10-08：328 盒 = 体素 96 + 可变形 232（弧墙 160 / 飞檐 48 / 隅撑 24），16404 B，14.00×15.00×11.50 格，占用 940 格 / 0.35 盒·每格；lt_root ✓ + lt_tree ✓（[问题] 无）+ lt_geom（`LT_GEOM_COMPOSITE=1`、`LT_COPLANAR_TOL=0.12`）232 盒 0 问题 ✓ —— 三项全过） |
+
 ## 说明
 - `nexus_lab.txt` / `neon_tower.txt` / `neon_city.txt` / `ramen_shop.txt` / `cyber_lab.txt` 等大蓝图**不入库**（脚本可重新生成）。
 - `lt_src/`、`cc_src/` 反编译源码与各 jar 也不入库（只读参考）。
