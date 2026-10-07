@@ -15,7 +15,9 @@ import numpy as np
 import lt_tbox, lt_colors
 
 OUT = "std_wall2.txt"
-ZO, CX, R0 = 12, 128, 64
+if os.path.exists(OUT):
+    os.remove(OUT)
+ZO, CX, R0 = 11, 128, 64
 CZ = ZO + R0
 NSEG, H = 16, 96
 NX, NY, NZ = 128, 96, ZO + 17
