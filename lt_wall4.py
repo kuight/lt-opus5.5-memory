@@ -43,9 +43,9 @@ if STYLE == "B":   # 风格 B 亮白硬科幻
         "panel": ("#EEF1F4", S), "rib": ("#C2C9D1", S), "groove": ("#1E242C", S),
         "hi": ("#F7F9FB", S), "base": ("#4A525C", S), "under": ("#9AA3AD", S),
         "door": ("#C8CED4", S), "clamp": ("#6E7884", S), "cyan": ("#9FF3FF", GL),
-        "red": ("#D13A2A", S), "quartz": ("#F7F9FB", S),
+        "red": ("#FF3B2F", GL), "quartz": ("#F7F9FB", S),
         "equip": ("#7E8893", S), "cable": ("#1E242C", S), "signbd": ("#F7F9FB", S),
-        "glowc": ("#9FF3FF", GL), "glowm": ("#D13A2A", S), "pane": ("#9FF3FF", TR),
+        "glowc": ("#9FF3FF", GL), "glowm": ("#FF3B2F", GL), "pane": ("#9FF3FF", TR),
     }
 if STYLE == "N":   # 风格 N 民生夜读版（A 提亮一档 + 暖窗）
     SPEC = {
@@ -183,7 +183,7 @@ print("== 加装层 %s%s：%s，风格 %s" % (VAR, SUF, "中密度" if VAR == "M
 for p in PARTS:
     print("   + " + p)
 print("   盒子 %d，发光盒 %d，半透明盒 %d，字节 %d" % (len(allb), nglow, ntrans, g["nbytes"]))
-print("   墙面在 z=%d（ZO 11→%d，外挑空间 %dpx）；风格 %s；对照组 = samples/std_wall3_%s.txt" % (NMAX, NMAX, NMAX, STYLE, STYLE))
+print("   墙面在 z=%d（ZO 11→%d，外挑空间 %dpx）；风格 %s；对照组 = samples/std_wall3_%s.txt" % (NMAX, NMAX, NMAX, STYLE, "A" if STYLE == "N" else STYLE))
 print("   材质映射（目标色 → 方块 → 实际色值，色差>40 标 [偏]）：")
 for k in ("equip", "cable", "signbd", "glowc", "glowm", "pane"):
     h, kd = SPEC[k]

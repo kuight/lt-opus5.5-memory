@@ -78,11 +78,13 @@
 
 | lt_s1.py | **超越技术样品 S1「实体光楼」**（黑色投影基座 + 4 层半透明实体光楼板 + 寄生舱/塔架/电缆 + 青粒子；**作者：设计方**） | lt_np / lt_mech2 / lt_colors | `samples/s1_light.txt` | **2026-10-07：lt_root / lt_tree 通过 ✓（无可变形盒，lt_geom / lt_seam 不适用）**；441 根盒 + 2 粒子子结构 = 443 盒 / 11966 B |
 
-| lt_wall4.py | **加装层样品**，**第 2 参数 `A|B|N`**（缺省 A；`_B`/`_N` 后缀）；**H 为基准密度**；读 `lt_wall2.py` 源码执行，ZO 11→22 留 22px 外挑，只在直段加 retrofitting；**作者：设计方** | lt_wall2（源码）/ lt_colors | `samples/std_wall4_H.txt`、`std_wall4_H_B.txt`、`std_wall4_H_N.txt`（⚠ `std_wall4_M` / `std_wall4_M_B` **作废：招牌字左右反**，勿用） | **待用户实测**（H 1083 盒/38376 B；H_B 1154 盒/39801 B；H_N 1083 盒/38447 B；**三组四项门禁全过 ✓**） |
+| lt_wall4.py | **加装层样品**，**第 2 参数 `A|B|N`**（缺省 A；`_B`/`_N` 后缀）；**H 为基准密度**；B 警示已改发光红；读 `lt_wall2.py` 源码执行，ZO 11→22，只在直段加 retrofitting；**作者：设计方** | lt_wall2（源码）/ lt_colors | `samples/std_wall4_H.txt`、`std_wall4_H_B.txt`、`std_wall4_H_N.txt`（⚠ `std_wall4_M` / `std_wall4_M_B` **作废：招牌字左右反**） | **待用户实测**（H 1083 盒/38376 B；**H_B 1154 盒/39811 B（发光盒 103）**；H_N 1083 盒/38447 B；四组四项门禁全过 ✓） |
 
 | patch_wall4_b.py | 给 `lt_wall4.py` 加第 2 参数 `A|B`（缺省 A，输出不变；B 亮白硬科幻：检修门/寄生舱 #C8CED4、设备中灰 #7E8893、发光仅青白 #9FF3FF、警示红 #D13A2A 不发光、招牌白底红字）；**作者：设计方** | 无 | — | 2026-10-07 原样保存并运行：**PASS** ✓ |
 
 | patch_wall4_n.py | `lt_wall4.py` 第 3 版补丁：加风格 **N**（民生夜读版）、**修招牌字左右反**（列 c → x=48-c）、**加强 B 警示**（罐带 4px + 檐下 45° 斜纹）；**作者：设计方** | 无 | — | 2026-10-07 原样保存并运行：**PASS** ✓ |
+
+| patch_wall4_glow.py | `lt_wall4.py` 第 4 版补丁：**B 警示改发光红**（`glowm`/`red` solid #D13A2A → glow **#FF3B2F**）+ 修 N 对照组提示（改指 `std_wall3_A`）；**作者：设计方** | 无 | — | 2026-10-07 原样保存并运行：**PASS** ✓ |
 
 ## 说明
 - `nexus_lab.txt` / `neon_tower.txt` / `neon_city.txt` / `ramen_shop.txt` / `cyber_lab.txt` 等大蓝图**不入库**（脚本可重新生成）。
