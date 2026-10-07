@@ -88,6 +88,8 @@
 
 | lt_noodle1.py | **合成蛋白面馆 一期待测件**（体块 + 剖面）：吊脚架空层（9 柱 + 6 大梁 + 24 隅撑）/ 中层面摊（临街整面敞开 + 柜台 + 暖光带 + 高凳 ×4 + 腰檐）/ 上层圆角住舱（R=32px 弧墙 ×4 + 腰檐→顶檐）；斜面只用 Y 偏移可变形盒；CLI 无参数，跑完打印盒数/字节/尺寸/占用格/材质表；**作者：设计方** | lt_colors / lt_root / lt_tbox / lt_mech2 | `samples/noodle1.txt`、`noodle1_top.png`、`noodle1_front.png` | **待用户实测**（2026-10-08：328 盒 = 体素 96 + 可变形 232（弧墙 160 / 飞檐 48 / 隅撑 24），16404 B，14.00×15.00×11.50 格，占用 940 格 / 0.35 盒·每格；lt_root ✓ + lt_tree ✓（[问题] 无）+ lt_geom（`LT_GEOM_COMPOSITE=1`、`LT_COPLANAR_TOL=0.12`）232 盒 0 问题 ✓ —— 三项全过） |
 
+| lt_noodle2.py | **合成蛋白面馆 二期a待测件**（举架屋面 / 瓦垄集热肋 / 檐下散热椽 / 平座勾栏 / 高凳重做 / N 风格分色）：读 `lt_noodle1.py` 原文按 7 个锚点替换（每个必须恰好出现 1 次）+ 插入二期a 代码后 `exec` 执行，一期逻辑不改；**作者：设计方** | `lt_noodle1.py`（原文，须 sha256 以 272a8a4c 开头） | `samples/noodle2.txt`、`noodle2_top.png`、`noodle2_front.png` | **待用户实测**（2026-10-08：712 盒 = 体素 202 + 可变形 510（一期 232 + 二期a 屋面 6 / 瓦垄 56 / 散热椽 216），34207 B，14.00×17.69×11.50 格，占用 1080 格 / 0.66 盒·每格；举架分步 RZ[56,72,84,92]→RH[234,242,250,261]，坡度 0.5/0.67/1.38；明度分级“全部可分”；lt_root ✓ + lt_tree ✓（[问题] 无）+ lt_geom（`LT_GEOM_COMPOSITE=1`、`LT_COPLANAR_TOL=0.12`）510 盒 0 问题 ✓ —— 三项全过） |
+
 ## 说明
 - `nexus_lab.txt` / `neon_tower.txt` / `neon_city.txt` / `ramen_shop.txt` / `cyber_lab.txt` 等大蓝图**不入库**（脚本可重新生成）。
 - `lt_src/`、`cc_src/` 反编译源码与各 jar 也不入库（只读参考）。
