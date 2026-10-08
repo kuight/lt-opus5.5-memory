@@ -1,8 +1,11 @@
 # EXEC_ATTEMPT.md —— 执行侧尝试（设计侧离线期间的记录）
 
+> **评审结论（2026-10-08）：不采用，仅参考。** 用户原话「agent 自己试着做了一些面馆…虽然我感觉不咋地，还是你来吧」；
+> 设计方**采纳其两条做法**（新件相交登记、自出投影图）进生成器。方向回归设计侧。
+
 > **本页所有内容都标注为「执行侧尝试」**，不属于设计方既定方案。设计侧恢复后可以：
 > ① `git diff pre-exec-attempt..HEAD` 一眼看完本轮全部改动；② `git revert <提交>` 或把本文件、
-> `lt_shop1_exec.py`、`samples/shop1_exec_*` 一起删掉，即回到尝试前状态（**锚点 tag：`pre-exec-attempt` = `aa9d3a828d24d8586e99e658196d836a3b51e7f8`**）。
+> `lt_shop1_exec.py`、`samples/shop1_exec_*` 一起删掉，即回到尝试前状态（**锚点 tag：`pre-exec-attempt` = `aa9d3a829d24d8586e99e658196d836a3b51e7f8`**）。
 
 ## 本轮做了什么
 | 项 | 内容 |

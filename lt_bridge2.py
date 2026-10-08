@@ -25,6 +25,8 @@ PAL = {
     "trough": ("#3A424D", "solid"), "ballast": ("#1E2329", "solid"), "rail": ("#9AA3AD", "solid"),
     "cable": ("#15181C", "solid"), "hoop": ("#3A3F45", "solid"), "rust": ("#6B4A3A", "solid"), "rust2": ("#4A3328", "solid"), "stain": ("#33383F", "solid"),
     "fade": ("#8E7F4A", "solid"), "plate": ("#7D8794", "solid"),
+    "label": ("#CFF8FF", "glow"), "rust3": ("#8A5A2B", "solid"), "ochre": ("#A0743A", "solid"),
+    "soot": ("#24201D", "solid"), "moss": ("#4A5536", "solid"), "chalk": ("#A8A496", "solid"),
     "yellow": ("#E8B00F", "solid"), "black": ("#1A1A1A", "solid"), "white": ("#E6E9EC", "solid"),
     "gold": ("#C9A23A", "solid"), "cyan": ("#00E5FF", "glow"), "amber": ("#FFB347", "glow"),
     "red": ("#FF3B2F", "glow"),
@@ -140,12 +142,12 @@ for ox, kind, label in PIERS:
             fill("pier2", ox + 8, 16, z0, ox + 40, yc - 32, z0 + 16)
             stripes(ox + 8, ox + 40, 16, 32, z0 if z0 == 0 else z0 + 15)
         fill("cap", ox, yc - 32, 0, ox + 48, yc, 96)
-        text("white", label, ox + 24, 80, 0, "N"); text("white", label, ox + 24, 80, 95, "S")
+        text("label", label, ox + 24, 80, 0, "N"); text("label", label, ox + 24, 80, 95, "S")
     else:
         fill("pier", ox + 4, 16, 24, ox + 44, yc - 32, 72)
         stripes(ox + 4, ox + 44, 16, 32, 24); stripes(ox + 4, ox + 44, 16, 32, 71)
         fill("cap", ox, yc - 32, 16, ox + 48, yc, 80)
-        text("white", label, ox + 24, 76, 24, "N"); text("white", label, ox + 24, 76, 71, "S")
+        text("label", label, ox + 24, 76, 24, "N"); text("label", label, ox + 24, 76, 71, "S")
         fill("rail", ox, 16, 34, ox + 4, yc - 32, 36); fill("rail", ox, 16, 44, ox + 4, yc - 32, 46)
         for y in range(22, yc - 34, 6):
             fill("rail", ox + 1, y, 36, ox + 2, y + 1, 44)
@@ -167,6 +169,7 @@ for ox, kind, label in PIERS:
 # ===================== 二期b：墩身光条 + B-09 成片做旧（patch_bridge2_b）=====================
 import random
 RND = random.Random(20261008)
+LIGHTS = []   # (名字, 亮度, 方块, 盒数组[G 坐标]) —— 真 light 子结构（FCB 发光不照亮邻块）
 CNT["plight"] = 0
 CNT["rust"] = 0
 
@@ -198,7 +201,7 @@ for ox, kind, label in PIERS:
             for xs in ((ox + 10, ox + 11), (ox + 37, ox + 38)):
                 CNT["plight"] += vstrip("cyan", "pier2", xs, (zf,), 34, top - 4)
         for z0 in (18, 76):                              # 门洞顶灯条：照亮将来的小摊
-            fill("cyan", ox + 4, top - 2, z0, ox + 44, top, z0 + 2)
+            LIGHTS.append(("B-08门洞灯", 15, MAT["cyan"], [ox + 4 + M, top - 2, z0 + M, ox + 44 + M, top, z0 + 2 + M]))
         continue
     old = kind == "hoop"
     lk = "amber" if old else "cyan"
@@ -304,6 +307,26 @@ for (xa, ya), (xb, yb2) in zip(HANG, HANG[1:]):               # 北侧灯笼缆�
         fill("gold", xc - 2, y - 12, 7, xc + 2, y - 11, 11)
         CNT["lantern"] += 1
 
+# ===================== 二期c：B-09 做旧色彩随机（3×4px 斑块，patch_bridge2_c）=====================
+RC = random.Random(20261009)
+ox9 = [ox for ox, k, _l in PIERS if k == "hoop"][0]
+xa, xb = ox9 - 40 + M, ox9 + 90 + M
+m_r = (mid("rust"), mid("rust2"))
+m_s = mid("stain")
+pal_r = [mid(k) for k in ("rust", "rust2", "rust3", "ochre", "rust3")]
+pal_sl = [mid(k) for k in ("stain", "moss", "moss", "soot")]
+pal_sh = [mid(k) for k in ("stain", "soot", "chalk", "stain")]
+cell = {}
+CNT["recolor"] = 0
+for x, y, z in np.argwhere(np.isin(G[xa:xb], m_r + (m_s,))):
+    X = int(x) + xa
+    v = int(G[X, y, z])
+    key = (v == m_s, X // 3, int(y) // 4, int(z) // 3)
+    if key not in cell:
+        cell[key] = RC.choice((pal_sl if y < 48 else pal_sh) if v == m_s else pal_r)
+    G[X, y, z] = cell[key]
+    CNT["recolor"] += 1
+
 # ===================== 贪心合并 + 导出 =====================
 def greedy():
     out = []
@@ -328,6 +351,14 @@ def greedy():
 
 OUT, NAME = "bridge2_proto.txt", "轨道桥二期_原型段"
 if os.path.exists(OUT): os.remove(OUT)
+for i in range(len(TB) - 1, -1, -1):          # 梁底下照灯 → light 子结构
+    if TB[i][0] == MAT["amber"]:
+        LIGHTS.append(("梁底下照灯", 12, TB[i][0], TB[i][1]))
+        del TB[i]
+assert LIGHTS, "没有 light 子结构"
+for _n, _lv, _b, a in LIGHTS:
+    assert 0 <= a[0] < a[3] <= NX and 0 <= a[1] < a[4] <= NY and 0 <= a[2] < a[5] <= NZ, "light 越界 %s" % a[:6]
+    assert not G[a[0]:a[3], a[1]:a[4], a[2]:a[5]].any(), "light 子结构与体素重叠 %s" % a[:6]
 for blk, v in TB:
     x0, y0, z0, x1, y1, z1 = v[:6]
     assert 0 <= x0 < x1 <= NX and 0 <= y0 < y1 <= NY and 0 <= z0 < z1 <= NZ, "可变形盒越界 %s" % v[:6]
@@ -347,7 +378,18 @@ for blk, bx in allb:
 parts = [('{bBox:%s,tile:{block:"%s"}}' % (a[0], blk)) if len(a) == 1 else
          ('{boxes:[%s],tile:{block:"%s"}}' % (",".join(a), blk)) for blk, a in by.items()]
 mn = [lo[i] - base[i] for i in range(3)]; sz = [hi[i] - lo[i] for i in range(3)]
-t = "{tiles:[%s],min:[I;%d,%d,%d],size:[I;%d,%d,%d],count:%d}" % (",".join(parts), *mn, *sz, len(allb))
+kids = {}
+for _n, _lv, _b, a in LIGHTS:
+    for i in range(3):
+        assert lo[i] <= a[i] and a[i + 3] <= hi[i], "light 超出主体并集 %s" % a[:6]
+    kids.setdefault((_n, _lv), {}).setdefault(_b, []).append("[I;%s]" % ",".join(map(str, sh(a))))
+cl = []
+for (nm, lv), byb in kids.items():
+    tp = [('{bBox:%s,tile:{block:"%s"}}' % (v[0], b)) if len(v) == 1 else
+          ('{boxes:[%s],tile:{block:"%s"}}' % (",".join(v), b)) for b, v in byb.items()]
+    cl.append('{tiles:[%s],structure:{id:"light",name:"%s",level:%d,disableRightClick:0b,enabled:{state:1}}}' % (",".join(tp), nm, lv))
+NLIGHT = sum(len(v) for byb in kids.values() for v in byb.values())
+t = "{tiles:[%s],children:[%s],min:[I;%d,%d,%d],size:[I;%d,%d,%d],count:%d}" % (",".join(parts), ",".join(cl), *mn, *sz, len(allb))
 t = lt_root.fix(t, NAME, tag=OUT)
 io.open(OUT, "w", encoding="utf-8").write(t)
 print("== %s（%s）" % (OUT, NAME))
@@ -358,6 +400,7 @@ print("  墩：%s" % "，".join("%s %s x=%d格" % (lb, k, ox // 16) for ox, k, l
 print("  墩距（格）：%s；梁底 %d→%d px（净空 %.1f→%.1f 格）" % (
     [(PIERS[i+1][0] - PIERS[i][0]) // 16 for i in range(3)], yb(0), yb(L), yb(0)/16.0, yb(L)/16.0))
 print("  二期b：墩身/承台光条像素 %d；B-09 锈痕像素 %d；剥落 4 处、补板 2 块、线缆 2 根、斜撑脚墩 2 个" % (CNT["plight"], CNT["rust"]))
+print("  二期c：发光墩号 4 处；B-09 重新着色像素 %d；light 子结构 %d 个（盒 %d）：%s" % (CNT["recolor"], len(kids), NLIGHT, "，".join("%s 亮度%d" % k for k in kids)))
 print("== 材质：")
 for k, (h, kd) in PAL.items():
     print("  %-8s %s %-5s → %s" % (k, h, kd, MAT[k]))
