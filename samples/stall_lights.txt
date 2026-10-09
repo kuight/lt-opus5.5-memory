@@ -1,0 +1,1 @@
+{tiles:[{bBox:[I;200,58,50,204,62,54],tile:{block:"flatcoloredblocks:flatcoloredblock_glowing0_11:13"}}],structure:{id:"light",name:"落星零件摊灯",level:11,disableRightClick:0b,enabled:{state:1}},min:[I;200,58,50],size:[I;4,4,4],count:1}

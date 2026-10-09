@@ -110,6 +110,16 @@
 
 | bridge2_lights.txt | **10 盏 light，与桥身同一放置点、先放**（light 根 + 9 个 light 子：门洞灯 ×2 亮度15 + 梁底下照灯 ×8 亮度12，全部 `state:1`） | — | `samples/bridge2_lights.txt` | 2026-10-09 入库（**2271 B / sha256 前16 `466a73593bec83d7`**；尺寸 544×96×60 px = 34×6×3.75 格；**放置偏移 = 桥放置点 + (x +4, y +9, z +1) 格**） |
 
+| lt_shop2.py | **桥下第一批店铺生成器**（记忆典当行 + 落星零件摊；一次产出 4 个文件：两个本体、两份灯）；**作者：设计方** | `bridge2_body.txt` / `bridge2_lights.txt`（须 sha256 以 `53b50e1507509657` / `466a73593bec83d7` 开头） | `samples/pawn_body.txt`、`stall_body.txt`、`pawn_lights.txt`、`stall_lights.txt` | **待用户实测**（2026-10-09：pawn_body **753 盒 / 20463 B / 10.0×13.375×9.625 格**；stall_body **1346 盒 / 33359 B / 5.125×7.125×4.0 格**；pawn_lights **13 盏 / 2727 B**；stall_lights **1 盏 / 243 B**；桥身+桥灯盒 4351 ✓；典当行距梁底最小净空 **33px = 2.06 格**；零件摊最高 y=114px（门洞灯条 148）；四份 lt_root ✓ + lt_tree ✓（[问题] 无）；材质 28 种） |
+
+| pawn_body.txt | **记忆典当行本体，无结构**（常错 #20 已断言 `structure:` 次数 = 0） | — | `samples/pawn_body.txt` | 2026-10-09 入库（**20463 B / sha256 前16 `b4a28af377aeb74a`**；753 盒；min `[240,0,20]`；放置顺序第 4 位） |
+
+| stall_body.txt | **落星零件摊本体，无结构** | — | `samples/stall_body.txt` | 2026-10-09 入库（**33359 B / sha256 前16 `a7fd44f31641684f`**；1346 盒；min `[146,0,16]`；放置顺序第 3 位） |
+
+| pawn_lights.txt | **典当行 13 盏独立 light（舱灯 2 盏默认关）**（抵押舱灯 ×6（其中 2、5 关，有人=亮）+ 大厅灯 ×3 亮度14 + 柜内灯 + 评估室灯 + 雨棚灯 ×2） | — | `samples/pawn_lights.txt` | 2026-10-09 入库（**2727 B / sha256 前16 `30258a5a8f15bb09`**；根=抵押舱灯1，子=12；放置顺序第 2 位） |
+
+| stall_lights.txt | **零件摊 1 盏暖灯**（落星零件摊灯 亮度11） | — | `samples/stall_lights.txt` | 2026-10-09 入库（**243 B / sha256 前16 `cd060c5adc3c7b2c`**；无子结构；**放置顺序第 1 位**） |
+
 | lt_shop1_exec.py | **【执行侧尝试，用户评不采用，仅参考】** 桥下三档店铺 v1（执行侧自写自跑的能力测试件：相交登记表 + 自出投影预览）；不属设计方方案，**采纳其两条做法**（新件相交登记、自出投影图）进设计方生成器 | 无 | `samples/shop1_exec_A.txt`、`shop1_exec_B.txt`、`*_view_*.png` 等 | **执行侧尝试（用户评不采用）**（原状态=待用户实测；2026-10-08：A 473 盒 / 11388 B；B 441 盒 / 12365 B；详见 `EXEC_ATTEMPT.md`，可整体删除） |
 
 | lt_shop1_exec.py | **【执行侧尝试 · EXEC ATTEMPT】桥下三档店铺 v1**（用户选定 A 项；设计侧离线期间能力测试件）：带**相交登记表**（常错#1 机器化）、Y 偏移斜面盒（只向内）、Pillow 文字（北面 x 大→x 小 / 东面左手 = +z）、**自出投影预览图**（lt_geom 的 PNG 只画可变形盒）；一次生成两个样品 A/B；**作者：执行侧（非设计方）** | 无（自建体素；需 Pillow + Windows 中文字体） | `samples/shop1_exec_A.txt`、`shop1_exec_B.txt`、`*_top/_front.png`（lt_geom）、`*_view_front/_side/_east/_top.png`（自检预览） | **执行侧尝试 · 待用户实测**（2026-10-08：A 门洞破烂小摊 **473 盒 / 11388 B / 3.56×5.62×5.12 格**；B 净跨豪华大店 **441 盒 / 12365 B / 15.00×10.50×6.25 格**；两文件各 **lt_root ✓ + lt_tree ✓（[问题] 无）+ lt_geom 0 问题 ✓**；详见 `EXEC_ATTEMPT.md`，可用 tag `pre-exec-attempt` 整体比对/回退） |
